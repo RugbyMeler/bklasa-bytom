@@ -111,7 +111,7 @@ export function GoalTrendsWidget({ teams }: Props) {
           <div className="flex items-center gap-1.5 flex-1">
             <span className="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0" />
             <select
-              className="text-xs bg-pitch-600 border border-pitch-500 rounded px-2 py-1 text-slate-200 flex-1 min-w-0"
+              className="text-xs bg-pitch-700 border border-pitch-500 rounded px-2 py-1 text-slate-200 flex-1 min-w-0 appearance-none cursor-pointer"
               value={selectedTeam}
               onChange={e => setSelectedTeam(e.target.value)}
             >
@@ -122,7 +122,7 @@ export function GoalTrendsWidget({ teams }: Props) {
             <div className="flex items-center gap-1.5 flex-1">
               <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
               <select
-                className="text-xs bg-pitch-600 border border-pitch-500 rounded px-2 py-1 text-slate-200 flex-1 min-w-0"
+                className="text-xs bg-pitch-700 border border-pitch-500 rounded px-2 py-1 text-slate-200 flex-1 min-w-0 appearance-none cursor-pointer"
                 value={compareTeam}
                 onChange={e => setCompareTeam(e.target.value)}
               >

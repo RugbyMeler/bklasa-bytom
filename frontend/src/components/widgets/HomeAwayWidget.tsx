@@ -44,7 +44,7 @@ export function HomeAwayWidget({ teams }: Props) {
           <span className="font-semibold text-sm text-slate-200">Dom vs Wyjazd</span>
         </div>
         <select
-          className="text-xs bg-pitch-600 border border-pitch-500 rounded px-2 py-1 text-slate-200 max-w-[160px]"
+          className="text-xs bg-pitch-700 border border-pitch-500 rounded px-2 py-1 text-slate-200 appearance-none cursor-pointer max-w-[160px]"
           value={selectedTeam}
           onChange={e => setSelectedTeam(e.target.value)}
         >
