@@ -115,7 +115,7 @@ export function GoalTrendsWidget({ teams }: Props) {
               value={selectedTeam}
               onChange={e => setSelectedTeam(e.target.value)}
             >
-              {teams.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+              {teams.map(t => <option key={t.name} value={t.name} style={{ backgroundColor: '#162032', color: '#e2e8f0' }}>{t.name}</option>)}
             </select>
           </div>
           {mode === 'compare' && (
@@ -126,7 +126,7 @@ export function GoalTrendsWidget({ teams }: Props) {
                 value={compareTeam}
                 onChange={e => setCompareTeam(e.target.value)}
               >
-                {teams.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                {teams.map(t => <option key={t.name} value={t.name} style={{ backgroundColor: '#162032', color: '#e2e8f0' }}>{t.name}</option>)}
               </select>
             </div>
           )}

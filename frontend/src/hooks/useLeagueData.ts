@@ -11,11 +11,15 @@ async function fetchAll(): Promise<DashboardData> {
   return data
 }
 
+const EIGHT_HOURS = 1000 * 60 * 60 * 8
+
 export function useLeagueData() {
   return useQuery({
     queryKey: ['league-data'],
     queryFn: fetchAll,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: EIGHT_HOURS,
+    refetchInterval: EIGHT_HOURS,
+    refetchIntervalInBackground: false, // only refetch when tab is active
     retry: 2,
   })
 }

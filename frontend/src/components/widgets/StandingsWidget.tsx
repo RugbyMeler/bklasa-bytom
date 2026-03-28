@@ -55,15 +55,15 @@ export function StandingsWidget({ teams }: Props) {
             </thead>
             <tbody>
               {teams.map((team, idx) => {
-                const isTop3 = idx < 3
-                const isBottom2 = idx >= teams.length - 2
+                const isPromotion = idx < 2
+                const isPlayoff = idx >= 2 && idx < 6
                 return (
                   <tr
                     key={team.name}
                     className={clsx(
                       'border-b border-pitch-600 hover:bg-pitch-600/50 transition-colors',
-                      isTop3 && 'border-l-2 border-l-accent-green',
-                      isBottom2 && 'border-l-2 border-l-accent-red',
+                      isPromotion && 'border-l-2 border-l-accent-green',
+                      isPlayoff && 'border-l-2 border-l-blue-400',
                     )}
                   >
                     <td className="px-3 py-2 text-slate-400">{team.position}</td>
@@ -93,8 +93,8 @@ export function StandingsWidget({ teams }: Props) {
           </table>
         </div>
         <div className="flex gap-4 px-3 py-2 text-xs text-slate-500 border-t border-pitch-600">
-          <span className="flex items-center gap-1"><span className="w-2 h-3 bg-green-500 rounded-sm inline-block" />Awans/Play-off</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-3 bg-red-500 rounded-sm inline-block" />Spadek</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-3 bg-green-500 rounded-sm inline-block" />Awans (1–2)</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-3 bg-blue-400 rounded-sm inline-block" />Baraże (3–6)</span>
         </div>
       </div>
     </div>
