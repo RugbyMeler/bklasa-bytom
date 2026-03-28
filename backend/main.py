@@ -36,6 +36,7 @@ from stats.advanced import (
     compute_scoreline_stats,
     compute_h2h_matrix,
     compute_title_relegation,
+    compute_positions_over_time,
 )
 
 app = FastAPI(title="B-klasa Bytom API", version="1.0.0")
@@ -298,6 +299,8 @@ def get_all():
     h2h = compute_h2h_matrix(results, standings) if standings else {"teams": [], "matrix": {}}
     title_relegation = compute_title_relegation(standings, results) if standings else []
 
+    positions_over_time = compute_positions_over_time(results)
+
     return {
         "standings": standings,
         "advanced_teams": advanced,
@@ -309,6 +312,7 @@ def get_all():
         "scoreline_stats": scoreline_stats,
         "h2h_matrix": h2h,
         "title_relegation": title_relegation,
+        "positions_over_time": positions_over_time,
     }
 
 

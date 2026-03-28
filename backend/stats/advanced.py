@@ -506,3 +506,60 @@ def compute_title_relegation(standings: list[dict], results: list[dict]) -> list
         })
 
     return rows
+
+
+def compute_positions_over_time(results: list[dict]) -> dict:
+    """
+    Compute each team's league position after every round played.
+    Returns {"teams": [...], "rounds": [{"round": N, "positions": {team: pos}}]}
+    Tiebreak: points > goal_difference > goals_for.
+    """
+    from collections import defaultdict
+
+    # Collect all teams and sort rounds
+    all_rounds = sorted({r.get("round") for r in results if r.get("round")})
+    teams: set[str] = set()
+    for r in results:
+        if r.get("home_team"):
+            teams.add(r["home_team"])
+        if r.get("away_team"):
+            teams.add(r["away_team"])
+
+    # Cumulative stats per team
+    stats: dict[str, dict] = {t: {"pts": 0, "gf": 0, "ga": 0} for t in teams}
+
+    rounds_data = []
+    for rnd in all_rounds:
+        # Apply this round's results
+        round_results = [r for r in results if r.get("round") == rnd]
+        for r in round_results:
+            ht, at = r.get("home_team", ""), r.get("away_team", "")
+            hg, ag = r.get("home_goals", 0), r.get("away_goals", 0)
+            if not ht or not at:
+                continue
+            stats[ht]["gf"] += hg
+            stats[ht]["ga"] += ag
+            stats[at]["gf"] += ag
+            stats[at]["ga"] += hg
+            if hg > ag:
+                stats[ht]["pts"] += 3
+            elif hg == ag:
+                stats[ht]["pts"] += 1
+                stats[at]["pts"] += 1
+            else:
+                stats[at]["pts"] += 3
+
+        # Rank teams
+        ranked = sorted(
+            teams,
+            key=lambda t: (
+                stats[t]["pts"],
+                stats[t]["gf"] - stats[t]["ga"],
+                stats[t]["gf"],
+            ),
+            reverse=True,
+        )
+        positions = {t: i + 1 for i, t in enumerate(ranked)}
+        rounds_data.append({"round": rnd, "positions": positions})
+
+    return {"teams": sorted(teams), "rounds": rounds_data}

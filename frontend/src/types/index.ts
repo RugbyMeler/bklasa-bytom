@@ -150,6 +150,11 @@ export interface TitleRelegationEntry {
   total_rounds: number
 }
 
+export interface PositionsOverTime {
+  teams: string[]
+  rounds: { round: number; positions: Record<string, number> }[]
+}
+
 export interface DashboardData {
   standings: TeamStanding[]
   advanced_teams: AdvancedTeamStats[]
@@ -161,6 +166,7 @@ export interface DashboardData {
   scoreline_stats?: ScorelineStats
   h2h_matrix?: H2HMatrix
   title_relegation?: TitleRelegationEntry[]
+  positions_over_time?: PositionsOverTime
 }
 
 export type WidgetId =
@@ -180,3 +186,4 @@ export type WidgetId =
   | 'scoreline_stats'
   | 'title_relegation'
   | 'points_pace'
+  | 'positions_over_time'

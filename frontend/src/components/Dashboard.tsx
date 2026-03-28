@@ -18,6 +18,7 @@ import { H2HMatrixWidget }       from './widgets/H2HMatrixWidget'
 import { ScorelineWidget }       from './widgets/ScorelineWidget'
 import { TitleRelegationWidget } from './widgets/TitleRelegationWidget'
 import { PointsPaceWidget }      from './widgets/PointsPaceWidget'
+import { PositionsWidget }      from './widgets/PositionsWidget'
 
 import type { DashboardData, WidgetId } from '../types'
 import { Eye, EyeOff, RotateCcw, RefreshCw, Settings } from 'lucide-react'
@@ -43,7 +44,8 @@ const DEFAULT_LAYOUT: Layout[] = [
   { i: 'title_relegation', x: 0, y: 82, w: 7, h: 16 },
   { i: 'points_pace',      x: 7, y: 82, w: 5, h: 16 },
   { i: 'h2h_matrix',       x: 0, y: 98, w: 12, h: 20 },
-  { i: 'scoreline_stats',  x: 0, y: 118, w: 6, h: 18 },
+  { i: 'scoreline_stats',    x: 0, y: 118, w: 6, h: 18 },
+  { i: 'positions_over_time', x: 6, y: 118, w: 6, h: 18 },
 ]
 
 const WIDGET_LABELS: Record<WidgetId, string> = {
@@ -61,8 +63,9 @@ const WIDGET_LABELS: Record<WidgetId, string> = {
   form_table:       'Forma 5 meczy',
   h2h_matrix:       'H2H Matrix',
   scoreline_stats:  'Wyniki meczy',
-  title_relegation: 'Awans/Play-off',
-  points_pace:      'Projekcja sezonu',
+  title_relegation:   'Awans/Play-off',
+  points_pace:        'Projekcja sezonu',
+  positions_over_time: 'Pozycje w czasie',
 }
 
 const WIDGET_ICONS: Record<WidgetId, string> = {
@@ -71,6 +74,7 @@ const WIDGET_ICONS: Record<WidgetId, string> = {
   clean_sheets: '🛡️', streaks: '🔥', schedule: '🗓️',
   elo: '⚡', form_table: '🔥', h2h_matrix: '⚔️',
   scoreline_stats: '🎯', title_relegation: '🏁', points_pace: '📈',
+  positions_over_time: '📉',
 }
 
 const STORAGE_KEY = 'bytom-dashboard-layout-v2'
@@ -137,7 +141,8 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
       case 'h2h_matrix':       return data.h2h_matrix?.teams.length ? <H2HMatrixWidget h2h={data.h2h_matrix} /> : null
       case 'scoreline_stats':  return data.scoreline_stats ? <ScorelineWidget stats={data.scoreline_stats} /> : null
       case 'title_relegation': return data.title_relegation?.length ? <TitleRelegationWidget data={data.title_relegation} /> : null
-      case 'points_pace':      return data.title_relegation?.length ? <PointsPaceWidget data={data.title_relegation} /> : null
+      case 'points_pace':         return data.title_relegation?.length ? <PointsPaceWidget data={data.title_relegation} /> : null
+      case 'positions_over_time': return data.positions_over_time?.rounds.length ? <PositionsWidget data={data.positions_over_time} /> : null
       default: return null
     }
   }
@@ -251,6 +256,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
           width={containerWidth}
           onLayoutChange={handleLayoutChange}
           draggableHandle=".widget-header"
+          draggableCancel="button,select,input,a,.no-drag"
           margin={[12, 12]}
           containerPadding={[0, 0]}
           resizeHandles={['se']}
