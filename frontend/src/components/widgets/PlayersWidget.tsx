@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Users } from 'lucide-react'
-import type { PlayerStat } from '../../types'
+interface PlayerStat { name: string; goals?: number; assists?: number; team?: string }
 
 interface Props {
   players: PlayerStat[]
