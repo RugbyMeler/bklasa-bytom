@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import type { DashboardData, PlayerStat } from '../types'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
 
 async function fetchAll(): Promise<DashboardData> {
   const { data } = await axios.get<DashboardData>(`${API_BASE}/all`)
