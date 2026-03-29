@@ -8,6 +8,9 @@ import time
 from functools import lru_cache
 from typing import Any
 
+from dotenv import load_dotenv
+load_dotenv()  # loads .env from project root if present
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -300,25 +303,51 @@ def refresh_cache():
     return {"status": "cache cleared"}
 
 
-def _get_round_summary(standings, results, advanced, form_table, force: bool = False) -> dict:
-    """Return cached round summary or generate a new one via Claude API."""
-    latest_round = max((r.get("round") or 0 for r in results), default=0)
-    if latest_round and not force and latest_round in _summary_by_round:
-        return _summary_by_round[latest_round]
+def _latest_completed_round(results: list[dict], schedule: list[dict]) -> int:
+    """Return the highest round number where all fixtures have been played.
+
+    A round is 'complete' when it has at least one result AND does not appear
+    in the upcoming schedule (no unplayed fixtures remaining for that round).
+    """
+    played_rounds = {r.get("round") for r in results if r.get("round")}
+    unplayed_rounds = {f.get("round") for f in schedule if f.get("round")}
+    completed = played_rounds - unplayed_rounds
+    return max(completed, default=0)
+
+
+def _get_round_summary(standings, results, schedule, advanced, form_table) -> dict:
+    """Auto-generate and cache a summary for the latest fully-completed round.
+
+    Never regenerates a round that already has a cached summary — the cache
+    is keyed by round number so it persists for the lifetime of the process.
+    """
+    target_round = _latest_completed_round(results, schedule)
+    if not target_round:
+        return {"round": None, "text": None, "error": "no completed round found"}
+
+    # Serve from cache if already generated for this round
+    if target_round in _summary_by_round:
+        return _summary_by_round[target_round]
+
+    # Generate once for this round
     summary = generate_round_summary(standings, results, advanced, form_table)
     if summary and summary.get("round") and not summary.get("error"):
         _summary_by_round[summary["round"]] = summary
-    return summary or {"round": latest_round, "text": None, "error": "generation failed"}
+        return summary
+
+    return summary or {"round": target_round, "text": None, "error": "generation failed"}
 
 
 @app.get("/api/round-summary")
-def get_round_summary(force: bool = False):
-    """Return AI-generated summary of the latest round (cached per round number)."""
+def get_round_summary():
+    """Return AI-generated summary for the latest fully-completed round.
+    Generated once automatically; cached indefinitely until a new round completes.
+    """
     standings, results = _get_clean_data()
+    schedule = _cached("schedule_rf", fetch_schedule_rf)
     advanced = compute_all_advanced_stats(standings, results) if standings else []
     form_table = compute_form_table(results, last_n=5)
-    summary = _get_round_summary(standings, results, advanced, form_table, force=force)
-    return summary
+    return _get_round_summary(standings, results, schedule, advanced, form_table)
 
 
 def _get_clean_data() -> tuple[list[dict], list[dict]]:
@@ -379,9 +408,9 @@ def get_all():
 
     positions_over_time = compute_positions_over_time(results)
 
-    # Include round summary only if already cached (avoid blocking the main response)
-    latest_round = max((r.get("round") or 0 for r in results), default=0)
-    round_summary = _summary_by_round.get(latest_round)
+    # Include summary for the latest completed round if already cached (non-blocking)
+    completed_round = _latest_completed_round(results, schedule)
+    round_summary = _summary_by_round.get(completed_round)
 
     return {
         "standings": standings,

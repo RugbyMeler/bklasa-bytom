@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Sparkles, AlertCircle, Newspaper } from 'lucide-react'
+import { Sparkles, AlertCircle, Newspaper } from 'lucide-react'
 import type { RoundSummary } from '../../types'
 
-// Resolve API base (same logic as useLeagueData)
 const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined) ?? '/api'
 
 interface Props {
-  /** Summary already available from the /api/all cache (may be null on first load) */
   initial?: RoundSummary | null
 }
 
@@ -16,12 +14,11 @@ export function RoundSummaryWidget({ initial }: Props) {
   const [loading, setLoading]     = useState(false)
   const [fetchError, setFetchErr] = useState<string | null>(null)
 
-  const fetchSummary = useCallback(async (force = false) => {
+  const fetchSummary = useCallback(async () => {
     setLoading(true)
     setFetchErr(null)
     try {
-      const url = `${API_BASE}/round-summary${force ? '?force=true' : ''}`
-      const res = await fetch(url)
+      const res = await fetch(`${API_BASE}/round-summary`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: RoundSummary = await res.json()
       setSummary(data)
@@ -32,14 +29,13 @@ export function RoundSummaryWidget({ initial }: Props) {
     }
   }, [])
 
-  // Auto-fetch on mount if no cached text is available
+  // Auto-fetch on mount if no cached text available
   useEffect(() => {
     if (!initial?.text) {
       fetchSummary()
     }
   }, [initial, fetchSummary])
 
-  // Split text into paragraphs for nicer rendering
   const paragraphs = summary?.text
     ? summary.text.split(/\n+/).map(p => p.trim()).filter(Boolean)
     : []
@@ -57,39 +53,26 @@ export function RoundSummaryWidget({ initial }: Props) {
             {summary?.round ? (
               <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-bold"
                     style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
-                Runda {summary.round}
+                Kolejka {summary.round}
               </span>
             ) : null}
           </span>
         </div>
-        <button
-          onClick={() => fetchSummary(true)}
-          disabled={loading}
-          className="no-drag flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
-          title="Wygeneruj nowe podsumowanie"
-          style={{
-            background: 'rgba(74,222,128,0.1)',
-            border: '1px solid rgba(74,222,128,0.25)',
-            color: '#4ade80',
-          }}
-        >
-          <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Generuję…' : 'Odśwież'}
-        </button>
+        <span className="text-xs" style={{ color: '#334155' }}>
+          Generowane automatycznie po kolejce
+        </span>
       </div>
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
 
-        {/* Loading state */}
+        {/* Loading */}
         {loading && !summary?.text && (
           <div className="flex flex-col items-center justify-center gap-4 py-10">
-            <div className="relative">
-              <Sparkles size={28} style={{ color: '#4ade80', opacity: 0.6 }} className="animate-pulse" />
-            </div>
+            <Sparkles size={28} style={{ color: '#4ade80', opacity: 0.6 }} className="animate-pulse" />
             <div className="text-center">
               <p className="text-sm font-semibold" style={{ color: '#94a3b8' }}>
-                Claude analizuje ligę…
+                Gemini analizuje ligę…
               </p>
               <p className="text-xs mt-1" style={{ color: '#475569' }}>
                 Może to potrwać kilka sekund
@@ -98,7 +81,7 @@ export function RoundSummaryWidget({ initial }: Props) {
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error */}
         {!loading && (fetchError || summary?.error) && !summary?.text && (
           <div className="flex flex-col items-center gap-3 py-8">
             <AlertCircle size={24} style={{ color: '#f87171' }} />
@@ -107,30 +90,27 @@ export function RoundSummaryWidget({ initial }: Props) {
                 Nie udało się wygenerować podsumowania
               </p>
               <p className="text-xs mt-1" style={{ color: '#64748b' }}>
-                {fetchError ?? summary?.error ?? 'Nieznany błąd'}
+                {fetchError ?? summary?.error}
               </p>
-              {(summary?.error === 'GOOGLE_API_KEY not set') && (
+              {summary?.error === 'no completed round found' && (
                 <p className="text-xs mt-2 px-3 py-2 rounded-lg"
-                   style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
-                  Ustaw zmienną środowiskową <code>GOOGLE_API_KEY</code> na Render.
-                  Klucz API jest bezpłatny: aistudio.google.com/apikey
+                   style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
+                  Podsumowanie pojawi się automatycznie po zakończeniu kolejki.
+                </p>
+              )}
+              {summary?.error === 'GOOGLE_API_KEY not set' && (
+                <p className="text-xs mt-2 px-3 py-2 rounded-lg"
+                   style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
+                  Ustaw zmienną <code>GOOGLE_API_KEY</code> na Render.
                 </p>
               )}
             </div>
-            <button
-              onClick={() => fetchSummary(true)}
-              className="no-drag text-xs px-4 py-2 rounded-lg"
-              style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', color: '#4ade80' }}
-            >
-              Spróbuj ponownie
-            </button>
           </div>
         )}
 
-        {/* Article text */}
+        {/* Article */}
         {summary?.text && (
           <article>
-            {/* Decorative newspaper rule */}
             <div className="flex items-center gap-3 mb-4">
               <div style={{ flex: 1, height: 1, background: 'rgba(74,222,128,0.25)' }} />
               <Sparkles size={12} style={{ color: '#4ade80', opacity: 0.6 }} />
@@ -139,31 +119,27 @@ export function RoundSummaryWidget({ initial }: Props) {
 
             <div className="space-y-3">
               {paragraphs.map((para, i) => (
-                <p
-                  key={i}
-                  className="text-sm leading-relaxed"
-                  style={{
-                    color: i === 0 ? '#e2e8f0' : '#94a3b8',
-                    fontWeight: i === 0 ? 500 : 400,
-                    fontSize: i === 0 ? '14px' : '13px',
-                  }}
-                >
+                <p key={i} className="leading-relaxed"
+                   style={{
+                     color: i === 0 ? '#e2e8f0' : '#94a3b8',
+                     fontWeight: i === 0 ? 500 : 400,
+                     fontSize: i === 0 ? '14px' : '13px',
+                   }}>
                   {para}
                 </p>
               ))}
             </div>
 
-            {/* Footer meta */}
             <div className="flex items-center justify-between mt-5 pt-3"
                  style={{ borderTop: '1px solid rgba(45,74,99,0.4)' }}>
               <div className="flex items-center gap-1.5">
                 <Sparkles size={10} style={{ color: '#475569' }} />
                 <span className="text-xs" style={{ color: '#475569' }}>
-                  Wygenerowane przez {summary.model ?? 'Claude AI'}
+                  Wygenerowane przez {summary.model ?? 'Gemini AI'}
                 </span>
               </div>
               <span className="text-xs" style={{ color: '#334155' }}>
-                B-Klasa Bytom · Runda {summary.round}
+                B-Klasa Bytom · Kolejka {summary.round}
               </span>
             </div>
           </article>
