@@ -226,7 +226,7 @@ def generate_round_summary(
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 max_output_tokens=2048,
@@ -237,7 +237,7 @@ def generate_round_summary(
         return {
             "round": latest_round,
             "text": text,
-            "model": "Gemini 1.5 Flash",
+            "model": "Gemini 2.5 Flash",
             "error": None,
         }
     except Exception as exc:

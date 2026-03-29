@@ -114,47 +114,75 @@ def fetch_standings() -> list[dict]:
 
 
 def fetch_results() -> list[dict]:
-    """Fetch recent match results from the league page."""
+    """Fetch match results from 90minut league page.
+
+    The page renders all fixtures as a flat list of cells:
+      'Kolejka N - <date range>'
+      team1, score (e.g. '3-1' or '-' for unplayed), team2, date_str, ...
+    We walk the tokens and parse played matches (score != '-').
+    """
     soup = _get_soup(LEAGUE_URL)
     if not soup:
         return []
 
+    # Find the main data table (the one with 300+ rows)
+    main_table = None
+    for t in soup.find_all("table"):
+        rows = t.find_all("tr")
+        if len(rows) > 50:
+            main_table = t
+            break
+    if not main_table:
+        return []
+
+    # Collect all non-empty cell texts from the table
+    tokens = []
+    for td in main_table.find_all("td"):
+        text = td.get_text(strip=True)
+        if text:
+            tokens.append(text)
+
     results = []
-    # Results are usually in a table with date, home team, score, away team
-    # Look for score pattern like "2:1", "0:0" etc.
-    for row in soup.find_all("tr"):
-        cells = row.find_all("td")
-        if len(cells) < 3:
-            continue
-        texts = [c.get_text(strip=True) for c in cells]
-        full_text = " ".join(texts)
-        # Score pattern
-        score_match = re.search(r"\b(\d+):(\d+)\b", full_text)
-        if not score_match:
-            continue
+    current_round = None
+    i = 0
+    score_re = re.compile(r"^(\d+)-(\d+)$")
+    round_re = re.compile(r"Kolejka\s+(\d+)", re.IGNORECASE)
 
-        links = row.find_all("a")
-        team_names = [a.get_text(strip=True) for a in links if a.get_text(strip=True)]
-        if len(team_names) < 2:
+    while i < len(tokens):
+        tok = tokens[i]
+
+        # Detect round header: "Kolejka 18 - 28-29 marca"
+        m = round_re.search(tok)
+        if m:
+            current_round = int(m.group(1))
+            i += 1
             continue
 
-        # Find date — look for DD.MM.YYYY or similar
-        date_match = re.search(r"\d{1,2}[./]\d{1,2}[./]\d{2,4}", full_text)
-        date_str = date_match.group(0) if date_match else ""
+        # Detect score token: "3-1", "10-1", "0-0"
+        sm = score_re.match(tok)
+        if sm and current_round is not None:
+            # Tokens just before: [..., home_team] at i-1
+            # Tokens just after:  away_team at i+1, date at i+2
+            if i >= 1 and i + 1 < len(tokens):
+                home_team = tokens[i - 1]
+                away_team = tokens[i + 1]
+                home_goals = int(sm.group(1))
+                away_goals = int(sm.group(2))
+                # Skip obvious non-team tokens
+                if not round_re.search(home_team) and home_team != "-":
+                    results.append({
+                        "date": "",
+                        "round": current_round,
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "home_goals": home_goals,
+                        "away_goals": away_goals,
+                        "source": "90minut",
+                    })
+            i += 2  # skip score + away_team (home_team already consumed)
+            continue
 
-        # Find round
-        round_match = re.search(r"(\d+)\s*kol", full_text, re.IGNORECASE)
-        round_num = int(round_match.group(1)) if round_match else None
-
-        results.append({
-            "date": date_str,
-            "round": round_num,
-            "home_team": team_names[0],
-            "away_team": team_names[-1],
-            "home_goals": int(score_match.group(1)),
-            "away_goals": int(score_match.group(2)),
-            "source": "90minut",
-        })
+        i += 1
 
     return results
 
