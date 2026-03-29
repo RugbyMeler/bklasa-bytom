@@ -161,15 +161,29 @@ def fetch_results() -> list[dict]:
         # Detect score token: "3-1", "10-1", "0-0"
         sm = score_re.match(tok)
         if sm and current_round is not None:
-            # Tokens just before: [..., home_team] at i-1
-            # Tokens just after:  away_team at i+1, date at i+2
-            if i >= 1 and i + 1 < len(tokens):
+            home_goals = int(sm.group(1))
+            away_goals = int(sm.group(2))
+            # Sanity check: realistic B-klasa single-match score
+            if home_goals <= 20 and away_goals <= 20 and i >= 1 and i + 1 < len(tokens):
                 home_team = tokens[i - 1]
                 away_team = tokens[i + 1]
-                home_goals = int(sm.group(1))
-                away_goals = int(sm.group(2))
-                # Skip obvious non-team tokens
-                if not round_re.search(home_team) and home_team != "-":
+                # Team names must look like team names, not stat columns
+                # (reject pure numbers, rank tokens like "1.", short codes)
+                def _looks_like_team(t: str) -> bool:
+                    t = t.strip()
+                    if len(t) < 4:
+                        return False
+                    if re.match(r"^\d+[\.\)]*$", t):  # "1.", "16", "2)"
+                        return False
+                    if re.match(r"^\d+-\d+", t):  # score-like "3-1", "0-3*"
+                        return False
+                    if round_re.search(t):
+                        return False
+                    if t in ("-", "(wo)"):
+                        return False
+                    return True
+
+                if _looks_like_team(home_team) and _looks_like_team(away_team):
                     results.append({
                         "date": "",
                         "round": current_round,
