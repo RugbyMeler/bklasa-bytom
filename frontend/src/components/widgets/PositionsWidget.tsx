@@ -77,7 +77,8 @@ export function PositionsWidget({ data }: Props) {
         <span className="text-xs text-slate-500">{rounds.length} kolejek</span>
       </div>
       <div className="widget-body">
-        <ResponsiveContainer width="100%" height={280}>
+        <div style={{ width: '100%', height: 280 }}>
+        <ResponsiveContainer width="100%" height="100%" debounce={50}>
           <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#162340" />
             <XAxis dataKey="round" tick={{ fill: '#94a3b8', fontSize: 10 }} />
@@ -111,6 +112,7 @@ export function PositionsWidget({ data }: Props) {
             })}
           </LineChart>
         </ResponsiveContainer>
+        </div>
 
         {/* Team legend */}
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">

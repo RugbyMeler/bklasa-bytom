@@ -30,22 +30,22 @@ interface Props {
 }
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'standings',    x: 0, y: 0,  w: 8, h: 11 },
-  { i: 'league_stats', x: 8, y: 0,  w: 4, h: 11 },
-  { i: 'pythagorean',  x: 0, y: 11, w: 6, h: 14 },
-  { i: 'form',         x: 6, y: 11, w: 6, h: 14 },
-  { i: 'results',      x: 0, y: 25, w: 6, h: 12 },
-  { i: 'home_away',    x: 6, y: 25, w: 6, h: 12 },
-  { i: 'goals_trend',  x: 0, y: 37, w: 6, h: 15 },
-  { i: 'clean_sheets', x: 6, y: 37, w: 6, h: 15 },
-  { i: 'streaks',          x: 0, y: 52, w: 12, h: 10 },
-  { i: 'elo',              x: 0, y: 62, w: 6, h: 20 },
-  { i: 'form_table',       x: 6, y: 62, w: 6, h: 14 },
-  { i: 'title_relegation', x: 0, y: 82, w: 7, h: 16 },
-  { i: 'points_pace',      x: 7, y: 82, w: 5, h: 16 },
-  { i: 'h2h_matrix',       x: 0, y: 98, w: 12, h: 20 },
-  { i: 'scoreline_stats',    x: 0, y: 118, w: 6, h: 18 },
-  { i: 'positions_over_time', x: 6, y: 118, w: 6, h: 18 },
+  { i: 'standings',           x: 0, y: 0,   w: 8,  h: 11 },
+  { i: 'league_stats',        x: 8, y: 0,   w: 4,  h: 11 },
+  { i: 'positions_over_time', x: 0, y: 11,  w: 12, h: 18 },
+  { i: 'pythagorean',         x: 0, y: 29,  w: 6,  h: 14 },
+  { i: 'form',                x: 6, y: 29,  w: 6,  h: 14 },
+  { i: 'results',             x: 0, y: 43,  w: 6,  h: 12 },
+  { i: 'home_away',           x: 6, y: 43,  w: 6,  h: 12 },
+  { i: 'goals_trend',         x: 0, y: 55,  w: 6,  h: 15 },
+  { i: 'clean_sheets',        x: 6, y: 55,  w: 6,  h: 15 },
+  { i: 'streaks',             x: 0, y: 70,  w: 12, h: 10 },
+  { i: 'elo',                 x: 0, y: 80,  w: 6,  h: 20 },
+  { i: 'form_table',          x: 6, y: 80,  w: 6,  h: 14 },
+  { i: 'title_relegation',    x: 0, y: 100, w: 7,  h: 16 },
+  { i: 'points_pace',         x: 7, y: 100, w: 5,  h: 16 },
+  { i: 'h2h_matrix',          x: 0, y: 116, w: 12, h: 20 },
+  { i: 'scoreline_stats',     x: 0, y: 136, w: 6,  h: 18 },
 ]
 
 const WIDGET_LABELS: Record<WidgetId, string> = {
@@ -77,8 +77,8 @@ const WIDGET_ICONS: Record<WidgetId, string> = {
   positions_over_time: '📉',
 }
 
-const STORAGE_KEY = 'bytom-dashboard-layout-v2'
-const HIDDEN_KEY  = 'bytom-dashboard-hidden-v2'
+const STORAGE_KEY = 'bytom-dashboard-layout-v3'
+const HIDDEN_KEY  = 'bytom-dashboard-hidden-v3'
 
 function loadLayout(): Layout[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') ?? DEFAULT_LAYOUT }
