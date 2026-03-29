@@ -58,16 +58,63 @@ WITHDRAWN_TEAMS: set[str] = {"Nadzieja II Bytom"}
 
 
 def _filter_withdrawn(standings: list[dict], results: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Remove withdrawn teams and all their matches from the data."""
-    clean_standings = [t for t in standings if t.get("name", "") not in WITHDRAWN_TEAMS]
+    """Remove withdrawn teams and all their matches from the data.
+    Also recomputes played/won/drawn/lost/gf/ga/points from filtered results
+    so scraped standings totals don't include annulled games."""
     clean_results = [
         r for r in results
         if r.get("home_team", "") not in WITHDRAWN_TEAMS
         and r.get("away_team", "") not in WITHDRAWN_TEAMS
     ]
-    # Re-number positions after removal
+
+    # Recompute per-team stats from filtered results
+    from collections import defaultdict
+    stats: dict = defaultdict(lambda: {"played": 0, "won": 0, "drawn": 0, "lost": 0, "gf": 0, "ga": 0, "points": 0})
+    for r in clean_results:
+        ht, at = r.get("home_team", ""), r.get("away_team", "")
+        hg, ag = r.get("home_goals", 0), r.get("away_goals", 0)
+        if not ht or not at:
+            continue
+        for team, gf, ga in [(ht, hg, ag), (at, ag, hg)]:
+            s = stats[team]
+            s["played"] += 1
+            s["gf"] += gf
+            s["ga"] += ga
+            if gf > ga:
+                s["won"] += 1
+                s["points"] += 3
+            elif gf == ga:
+                s["drawn"] += 1
+                s["points"] += 1
+            else:
+                s["lost"] += 1
+
+    clean_standings = []
+    for t in standings:
+        name = t.get("name", "")
+        if name in WITHDRAWN_TEAMS:
+            continue
+        s = stats.get(name, {})
+        gf = s.get("gf", t.get("goals_for", 0))
+        ga = s.get("ga", t.get("goals_against", 0))
+        updated = {
+            **t,
+            "played":         s.get("played",  t.get("played", 0)),
+            "won":            s.get("won",     t.get("won", 0)),
+            "drawn":          s.get("drawn",   t.get("drawn", 0)),
+            "lost":           s.get("lost",    t.get("lost", 0)),
+            "goals_for":      gf,
+            "goals_against":  ga,
+            "goal_difference": gf - ga,
+            "points":         s.get("points",  t.get("points", 0)),
+        }
+        clean_standings.append(updated)
+
+    # Re-sort by points/GD/GF and re-number positions
+    clean_standings.sort(key=lambda t: (t["points"], t["goal_difference"], t["goals_for"]), reverse=True)
     for i, t in enumerate(clean_standings, 1):
         t["position"] = i
+
     return clean_standings, clean_results
 
 
