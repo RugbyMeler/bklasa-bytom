@@ -41,28 +41,54 @@ def _parse_int(text: str) -> int:
 
 
 def fetch_standings() -> list[dict]:
+    """Fetch standings from 90minut.pl.
+
+    The standings table on 90minut has the layout (RAZEM section):
+      col 0: position ("1.", "2.", ...)
+      col 1: team name
+      col 2: M.  — matches played
+      col 3: Pkt. — points
+      col 4: Z.  — won
+      col 5: R.  — drawn
+      col 6: P.  — lost
+      col 7: Bramki — "GF-GA" (e.g. "85-16")
+      col 8+: home/away splits (ignored)
+
+    We find the right table by locating the header row that contains "Nazwa"
+    and "Pkt." (with period), then parse data rows whose first cell matches
+    the "N." pattern.  This avoids accidentally parsing the H2H matrix which
+    has bare numbers ("1", "2") and no "Pkt." header.
+    """
     soup = _get_soup(LEAGUE_URL)
     if not soup:
         return []
 
-    standings = []
-    # 90minut.pl uses a table with class 'liga' or similar for standings
-    # The main standings table has rows with team data
-    tables = soup.find_all("table")
+    pos_re = re.compile(r"^(\d+)\.$")   # matches "1.", "16." etc.
 
-    for table in tables:
+    for table in soup.find_all("table"):
         rows = table.find_all("tr")
+
+        # Identify the standings table: it must contain a header row with "Nazwa" and "Pkt."
+        header_found = False
+        for row in rows:
+            texts = [c.get_text(strip=True) for c in row.find_all(["td", "th"])]
+            if "Nazwa" in texts and "Pkt." in texts:
+                header_found = True
+                break
+        if not header_found:
+            continue
+
+        # Parse data rows
         parsed = []
         for row in rows:
             cells = row.find_all(["td", "th"])
             if len(cells) < 8:
                 continue
             texts = [c.get_text(strip=True) for c in cells]
-            # Detect header row
-            if any(t in ("Pkt", "PKT", "Pts") for t in texts):
-                continue
-            # Position should be a number
-            if not texts[0].isdigit():
+
+            # Position cell must be "N." format
+            m = pos_re.match(texts[0].strip())
+            if not m:
                 continue
 
             team_link = row.find("a")
@@ -71,25 +97,16 @@ def fetch_standings() -> list[dict]:
             club_id_match = re.search(r"id_klub=(\d+)", team_href)
             club_id = club_id_match.group(1) if club_id_match else None
 
-            # Try to parse goals "GF:GA" or "GF-GA" pattern
-            goals_cell = texts[7] if len(texts) > 7 else "0:0"
+            # Goals cell is "GF-GA" e.g. "85-16"
+            goals_cell = texts[7] if len(texts) > 7 else "0-0"
             gf, ga = 0, 0
             goals_match = re.search(r"(\d+)[:\-](\d+)", goals_cell)
             if goals_match:
                 gf, ga = int(goals_match.group(1)), int(goals_match.group(2))
-            else:
-                # Goals might be in separate cells
-                try:
-                    gf = _parse_int(texts[7])
-                    ga = _parse_int(texts[8]) if len(texts) > 8 else 0
-                except Exception:
-                    pass
 
-            # Try to find column layout: pos, team, played, won, drawn, lost, gf, ga, pts
-            # or: pos, team, played, pts, won, drawn, lost, gf:ga, gd
             try:
                 entry = {
-                    "position": _parse_int(texts[0]),
+                    "position": int(m.group(1)),
                     "name": team_name,
                     "club_id": club_id,
                     "played": _parse_int(texts[2]),
@@ -107,96 +124,67 @@ def fetch_standings() -> list[dict]:
                 continue
 
         if len(parsed) >= 6:
-            standings = parsed
-            break
+            return parsed
 
-    return standings
+    return []
 
 
 def fetch_results() -> list[dict]:
     """Fetch match results from 90minut league page.
 
-    The page renders all fixtures as a flat list of cells:
-      'Kolejka N - <date range>'
-      team1, score (e.g. '3-1' or '-' for unplayed), team2, date_str, ...
-    We walk the tokens and parse played matches (score != '-').
+    The page contains one table per round.  Each round table has 4-column rows:
+      col 0: home team name
+      col 1: score  ("3-1" for played, "-" for unplayed, "(wo)" for walkover)
+      col 2: away team name
+      col 3: date string (e.g. "29 marca, 16:00")
+
+    The round number is identified from the nearest preceding "Kolejka N" text
+    node in the document, which appears as a link/header just above the table.
     """
     soup = _get_soup(LEAGUE_URL)
     if not soup:
         return []
 
-    # Find the main data table (the one with 300+ rows)
-    main_table = None
-    for t in soup.find_all("table"):
-        rows = t.find_all("tr")
-        if len(rows) > 50:
-            main_table = t
-            break
-    if not main_table:
-        return []
-
-    # Collect all non-empty cell texts from the table
-    tokens = []
-    for td in main_table.find_all("td"):
-        text = td.get_text(strip=True)
-        if text:
-            tokens.append(text)
-
-    results = []
-    current_round = None
-    i = 0
     score_re = re.compile(r"^(\d+)-(\d+)$")
     round_re = re.compile(r"Kolejka\s+(\d+)", re.IGNORECASE)
 
-    while i < len(tokens):
-        tok = tokens[i]
+    results = []
 
-        # Detect round header: "Kolejka 18 - 28-29 marca"
-        m = round_re.search(tok)
-        if m:
-            current_round = int(m.group(1))
-            i += 1
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+
+        # A round table has mostly 4-column rows and at least 4 rows
+        four_col_rows = [r for r in rows if len(r.find_all("td")) == 4]
+        if len(four_col_rows) < 4:
             continue
 
-        # Detect score token: "3-1", "10-1", "0-0"
-        sm = score_re.match(tok)
-        if sm and current_round is not None:
-            home_goals = int(sm.group(1))
-            away_goals = int(sm.group(2))
-            # Sanity check: realistic B-klasa single-match score
-            if home_goals <= 20 and away_goals <= 20 and i >= 1 and i + 1 < len(tokens):
-                home_team = tokens[i - 1]
-                away_team = tokens[i + 1]
-                # Team names must look like team names, not stat columns
-                # (reject pure numbers, rank tokens like "1.", short codes)
-                def _looks_like_team(t: str) -> bool:
-                    t = t.strip()
-                    if len(t) < 4:
-                        return False
-                    if re.match(r"^\d+[\.\)]*$", t):  # "1.", "16", "2)"
-                        return False
-                    if re.match(r"^\d+-\d+", t):  # score-like "3-1", "0-3*"
-                        return False
-                    if round_re.search(t):
-                        return False
-                    if t in ("-", "(wo)"):
-                        return False
-                    return True
-
-                if _looks_like_team(home_team) and _looks_like_team(away_team):
-                    results.append({
-                        "date": "",
-                        "round": current_round,
-                        "home_team": home_team,
-                        "away_team": away_team,
-                        "home_goals": home_goals,
-                        "away_goals": away_goals,
-                        "source": "90minut",
-                    })
-            i += 2  # skip score + away_team (home_team already consumed)
+        # Determine round number from the nearest preceding "Kolejka N" text
+        prev_round_texts = table.find_all_previous(string=round_re)
+        if not prev_round_texts:
             continue
+        round_match = round_re.search(prev_round_texts[0])
+        if not round_match:
+            continue
+        round_num = int(round_match.group(1))
 
-        i += 1
+        for row in four_col_rows:
+            cells = row.find_all("td")
+            texts = [c.get_text(strip=True) for c in cells]
+            home_team, score_str, away_team, date_str = texts[0], texts[1], texts[2], texts[3]
+
+            sm = score_re.match(score_str)
+            if not sm:
+                continue  # unplayed ("-") or walkover — skip
+
+            results.append({
+                "date": date_str,
+                "round": round_num,
+                "home_team": home_team,
+                "away_team": away_team,
+                "home_goals": int(sm.group(1)),
+                "away_goals": int(sm.group(2)),
+                "source": "90minut",
+            })
 
     return results
 
