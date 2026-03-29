@@ -1,7 +1,8 @@
 """
-AI-generated round summary using Google Gemini API (free tier).
+AI-generated round summary using Google Gemini 2.0 Flash (free tier).
 Generates a Polish sports-journalist summary of the latest round.
 
+Uses the google-genai package (newer SDK, replaces google-generativeai).
 Free tier limits (as of 2025): 1500 requests/day, 15 RPM — more than
 enough since the summary is cached per round number and only regenerated
 when new round data arrives.
@@ -14,7 +15,8 @@ import os
 from typing import Optional
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types as genai_types
     _GEMINI_AVAILABLE = True
 except ImportError:
     _GEMINI_AVAILABLE = False
@@ -219,11 +221,11 @@ def generate_round_summary(
     prompt = _build_prompt(standings, results, advanced_teams, form_table, latest_round, prev_text)
 
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
                 max_output_tokens=700,
                 temperature=0.8,
             ),
@@ -232,7 +234,7 @@ def generate_round_summary(
         return {
             "round": latest_round,
             "text": text,
-            "model": "Gemini 1.5 Flash",
+            "model": "Gemini 2.0 Flash",
             "error": None,
         }
     except Exception as exc:
