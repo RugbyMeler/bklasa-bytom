@@ -117,8 +117,8 @@ export function UpcomingMatchesWidget({ schedule, teams }: Props) {
             {filtered.map((match, i) => {
               const isHome = match.home_team === selectedTeam
               const isAway = match.away_team === selectedTeam
-              const { short, dayName, full } = formatDate(match.date, match.time)
-              const days = daysFromNow(match.date)
+              const { short, dayName, full } = formatDate(match.date ?? '', match.time)
+              const days = daysFromNow(match.date ?? '')
 
               let daysLabel = ''
               let daysColor = '#64748b'
