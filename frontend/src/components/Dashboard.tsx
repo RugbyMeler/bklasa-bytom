@@ -51,7 +51,7 @@ const DEFAULT_LAYOUT: Layout[] = [
 ]
 
 const WIDGET_LABELS: Record<WidgetId, string> = {
-  round_summary:       'Podsumowanie rundy',
+  round_summary:       'Podsumowanie kolejki',
   standings:           'Tabela',
   pythagorean:         'Pitagoras',
   form:                'Forma',

@@ -53,7 +53,7 @@ export function RoundSummaryWidget({ initial }: Props) {
         <div className="flex items-center gap-2">
           <Newspaper size={15} style={{ color: '#4ade80' }} />
           <span className="text-sm font-semibold" style={{ color: '#f1f5f9' }}>
-            Podsumowanie rundy
+            Podsumowanie kolejki
             {summary?.round ? (
               <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-bold"
                     style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>

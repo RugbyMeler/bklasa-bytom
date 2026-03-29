@@ -172,7 +172,7 @@ REKORDY SEZONU
 ══════════════════════════════════════════
 ZADANIE
 ══════════════════════════════════════════
-Napisz podsumowanie rundy {latest_round} (ok. 220–280 słów) w stylu dziennikarza sportowego. Wymagania:
+Napisz podsumowanie kolejki {latest_round} (ok. 220–280 słów) w stylu dziennikarza sportowego. Wymagania:
 
 1. Zacznij od uderzającego leadu — najważniejszy lub najbardziej zaskakujący wynik rundy.
 2. Omów walkę o czołowe miejsca — lider tabeli, pretendenci, różnice punktowe.
