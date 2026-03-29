@@ -11,7 +11,7 @@ from typing import Any
 from dotenv import load_dotenv
 load_dotenv()  # loads .env from project root if present
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from scrapers.scraper_90minut import (
@@ -392,8 +392,15 @@ def get_title_relegation():
     return {"title_relegation": tr, "count": len(tr)}
 
 
+def _warm_summary_cache(standings, results, schedule, advanced, form_table):
+    """Background task: generate summary if not already cached for the latest completed round."""
+    target = _latest_completed_round(results, schedule)
+    if target and target not in _summary_by_round:
+        _get_round_summary(standings, results, schedule, advanced, form_table)
+
+
 @app.get("/api/all")
-def get_all():
+def get_all(background_tasks: BackgroundTasks):
     """Single endpoint to fetch everything at once (for dashboard init)."""
     standings, results = _get_clean_data()
     schedule = _cached("schedule_rf", fetch_schedule_rf)
@@ -408,9 +415,13 @@ def get_all():
 
     positions_over_time = compute_positions_over_time(results)
 
-    # Include summary for the latest completed round if already cached (non-blocking)
+    # Include summary if already cached; otherwise kick off generation in background
     completed_round = _latest_completed_round(results, schedule)
     round_summary = _summary_by_round.get(completed_round)
+    if not round_summary:
+        background_tasks.add_task(
+            _warm_summary_cache, standings, results, schedule, advanced, form_table
+        )
 
     return {
         "standings": standings,
