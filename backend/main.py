@@ -283,12 +283,30 @@ def refresh_cache():
 def _latest_completed_round(results: list[dict], schedule: list[dict]) -> int:
     """Return the highest round number where all fixtures have been played.
 
-    A round is 'complete' when it has at least one result AND does not appear
-    in the upcoming schedule (no unplayed fixtures remaining for that round).
+    A round is 'complete' when it has at least one result AND has no truly
+    future unplayed fixtures. We exclude:
+      - fixtures involving withdrawn teams (walkovers, may linger in schedule)
+      - fixtures whose date is today or in the past (regionalnyfutbol is slow
+        to remove same-day results from the upcoming schedule)
     """
+    import datetime
+    today = datetime.date.today().isoformat()
+
     played_rounds = {r.get("round") for r in results if r.get("round")}
-    unplayed_rounds = {f.get("round") for f in schedule if f.get("round")}
-    completed = played_rounds - unplayed_rounds
+
+    real_unplayed = set()
+    for f in schedule:
+        rnd = f.get("round")
+        if not rnd:
+            continue
+        if f.get("home_team", "") in WITHDRAWN_TEAMS or f.get("away_team", "") in WITHDRAWN_TEAMS:
+            continue
+        fixture_date = f.get("date", "")
+        if fixture_date and fixture_date <= today:
+            continue  # already happened (or today) — regionalnyfutbol just hasn't removed it yet
+        real_unplayed.add(rnd)
+
+    completed = played_rounds - real_unplayed
     return max(completed, default=0)
 
 

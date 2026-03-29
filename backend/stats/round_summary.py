@@ -172,16 +172,17 @@ REKORDY SEZONU
 ══════════════════════════════════════════
 ZADANIE
 ══════════════════════════════════════════
-Napisz podsumowanie kolejki {latest_round} (ok. 220–280 słów) w stylu dziennikarza sportowego. Wymagania:
+Napisz szczegółowe podsumowanie kolejki {latest_round} (ok. 400–500 słów) w stylu dziennikarza sportowego. Wymagania:
 
 1. Zacznij od uderzającego leadu — najważniejszy lub najbardziej zaskakujący wynik kolejki.
-2. Omów walkę o czołowe miejsca — lider tabeli, pretendenci, różnice punktowe.
-3. Wyróżnij drużyny w świetnej formie i wspomnij o bieżących seriach.
-4. Zwróć uwagę na drużyny w kryzysie (seria porażek, słaba forma).
-5. Jeśli w tej kolejce padł rekord (bramkostrzelny mecz, wysoka wygrana), odnotuj go.
-6. Zakończ krótką zapowiedzią walki w następnych kolejkach lub kluczowymi potyczkami.
+2. Omów KAŻDY mecz kolejki — nie pomiń żadnego. Dla każdego podaj wynik i krótki komentarz (co decydowało, kto błyszczał, czy był to niespodziewany rezultat).
+3. Omów szczegółowo walkę o czołowe miejsca — lider, różnice punktowe, kto zyskał, kto stracił.
+4. Wyróżnij drużyny w świetnej formie i wspomnij o bieżących seriach (zwycięstw, niepokonania, strzeleckich).
+5. Zwróć uwagę na drużyny w kryzysie (seria porażek, słaba forma, dramatyczna różnica bramek).
+6. Jeśli w tej kolejce padł rekord sezonu (najbardziej bramkostrzelny mecz, najwyższe zwycięstwo), podkreśl go.
+7. Zakończ zapowiedzią kluczowych starć w kolejnych kolejkach i pytaniem o to, kto może zagrozić liderowi.
 
-Styl: płynna proza, emocjonalny język, bez używania markdown (żadnych **, ## ani list punktorowanych). Pisz jak artykuł prasowy — ciągłym tekstem."""
+Styl: płynna proza, emocjonalny język sportowy, bez używania markdown (żadnych **, ## ani list punktorowanych). Pisz jak rozbudowany artykuł prasowy — ciągłym tekstem, podzielonym na akapity."""
 
 
 # ── Main generation function ──────────────────────────────────────────────────
@@ -229,7 +230,7 @@ def generate_round_summary(
             model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
-                max_output_tokens=2048,
+                max_output_tokens=4096,
                 temperature=0.8,
             ),
         )
