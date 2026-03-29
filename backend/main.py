@@ -55,16 +55,21 @@ CACHE_TTL = 900  # 15 minutes
 # Teams that have withdrawn from the competition this season.
 # Their results are annulled and they are excluded from all stats.
 WITHDRAWN_TEAMS: set[str] = {"Nadzieja II Bytom"}
+# First-half results (rounds 1–16) involving withdrawn teams still count.
+# Only unplayed return fixtures (round 17+) are cancelled.
+WITHDRAWAL_FROM_ROUND: int = 17
 
 
 def _filter_withdrawn(standings: list[dict], results: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Remove withdrawn teams and all their matches from the data.
-    Also recomputes played/won/drawn/lost/gf/ga/points from filtered results
-    so scraped standings totals don't include annulled games."""
+    """Remove withdrawn teams from standings and cancel only their return fixtures.
+    First-half results (round < WITHDRAWAL_FROM_ROUND) still count.
+    Also recomputes played/won/drawn/lost/gf/ga/points from filtered results."""
+    def _involves_withdrawn(r: dict) -> bool:
+        return r.get("home_team", "") in WITHDRAWN_TEAMS or r.get("away_team", "") in WITHDRAWN_TEAMS
+
     clean_results = [
         r for r in results
-        if r.get("home_team", "") not in WITHDRAWN_TEAMS
-        and r.get("away_team", "") not in WITHDRAWN_TEAMS
+        if not _involves_withdrawn(r) or (r.get("round") or 0) < WITHDRAWAL_FROM_ROUND
     ]
 
     # Recompute per-team stats from filtered results
