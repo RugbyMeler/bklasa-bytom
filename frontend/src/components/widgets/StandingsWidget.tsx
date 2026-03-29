@@ -30,16 +30,16 @@ export function StandingsWidget({ teams }: Props) {
     <div className="widget-card">
       <div className="widget-header">
         <div className="flex items-center gap-2">
-          <Trophy size={16} className="text-accent-yellow" />
-          <span className="font-semibold text-sm text-slate-200">Tabela ligowa</span>
+          <Trophy size={16} style={{ color: 'var(--gold)' }} />
+          <span className="font-semibold text-sm" style={{ color: '#e8f0ec' }}>Tabela ligowa</span>
         </div>
-        <span className="text-xs text-slate-500">{teams.length} drużyn</span>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{teams.length} drużyn</span>
       </div>
       <div className="widget-body p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-pitch-500 text-slate-400">
+              <tr style={{ borderBottom: '1px solid var(--card-bd)', color: 'var(--text-muted)' }}>
                 <th className="text-left px-3 py-2 w-6">#</th>
                 <th className="text-left px-3 py-2 min-w-[140px]">Drużyna</th>
                 <th className="px-2 py-2 text-center w-8">M</th>
@@ -48,7 +48,7 @@ export function StandingsWidget({ teams }: Props) {
                 <th className="px-2 py-2 text-center w-8">P</th>
                 <th className="px-2 py-2 text-center w-16">Bramki</th>
                 <th className="px-2 py-2 text-center w-8">+/-</th>
-                <th className="px-2 py-2 text-center w-10 font-bold text-slate-200">Pkt</th>
+                <th className="px-2 py-2 text-center w-10 font-bold" style={{ color: '#e8f0ec' }}>Pkt</th>
                 <th className="px-2 py-2 text-center min-w-[90px]">Forma</th>
                 <th className="px-2 py-2 text-center w-12">PPG</th>
               </tr>
@@ -61,40 +61,52 @@ export function StandingsWidget({ teams }: Props) {
                   <tr
                     key={team.name}
                     className={clsx(
-                      'border-b border-pitch-600 hover:bg-pitch-600/50 transition-colors',
-                      isPromotion && 'border-l-2 border-l-accent-green',
-                      isPlayoff && 'border-l-2 border-l-blue-400',
+                      'transition-colors',
+                      isPromotion && 'border-l-2',
+                      isPlayoff && 'border-l-2',
                     )}
+                    style={{
+                      borderBottom: '1px solid rgba(30,58,42,0.5)',
+                      borderLeftColor: isPromotion ? '#22c55e' : isPlayoff ? '#38bdf8' : undefined,
+                    }}
+                    onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(34,197,94,0.04)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = ''}
                   >
-                    <td className="px-3 py-2 text-slate-400">{team.position}</td>
-                    <td className="px-3 py-2 font-medium text-slate-100 whitespace-nowrap">{team.name}</td>
-                    <td className="px-2 py-2 text-center text-slate-300">{team.played}</td>
-                    <td className="px-2 py-2 text-center text-green-400">{team.won}</td>
-                    <td className="px-2 py-2 text-center text-yellow-400">{team.drawn}</td>
-                    <td className="px-2 py-2 text-center text-red-400">{team.lost}</td>
-                    <td className="px-2 py-2 text-center text-slate-300">
+                    <td className="px-3 py-2">
+                      <span className="rank-num">{String(team.position).padStart(2, '0')}</span>
+                    </td>
+                    <td className="px-3 py-2 font-medium whitespace-nowrap" style={{ color: '#e8f0ec' }}>{team.name}</td>
+                    <td className="px-2 py-2 text-center" style={{ color: '#b0c8b8' }}>{team.played}</td>
+                    <td className="px-2 py-2 text-center" style={{ color: '#22c55e' }}>{team.won}</td>
+                    <td className="px-2 py-2 text-center" style={{ color: '#fbbf24' }}>{team.drawn}</td>
+                    <td className="px-2 py-2 text-center" style={{ color: '#ef4444' }}>{team.lost}</td>
+                    <td className="px-2 py-2 text-center" style={{ color: '#b0c8b8' }}>
                       {team.goals_for}:{team.goals_against}
                     </td>
-                    <td className={clsx(
-                      'px-2 py-2 text-center font-mono',
-                      team.goal_difference > 0 ? 'text-green-400' : team.goal_difference < 0 ? 'text-red-400' : 'text-slate-400'
-                    )}>
+                    <td className={clsx('px-2 py-2 text-center font-mono')}
+                        style={{ color: team.goal_difference > 0 ? '#22c55e' : team.goal_difference < 0 ? '#ef4444' : 'var(--text-muted)' }}>
                       {team.goal_difference > 0 ? '+' : ''}{team.goal_difference}
                     </td>
-                    <td className="px-2 py-2 text-center font-bold text-white">{team.points}</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{ color: '#e8f0ec' }}>{team.points}</td>
                     <td className="px-2 py-2">
                       <FormDots form={team.form || []} trend={team.goals_trend} />
                     </td>
-                    <td className="px-2 py-2 text-center text-slate-300 font-mono">{team.ppg?.toFixed(2)}</td>
+                    <td className="px-2 py-2 text-center font-mono" style={{ color: '#b0c8b8' }}>{team.ppg?.toFixed(2)}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
-        <div className="flex gap-4 px-3 py-2 text-xs text-slate-500 border-t border-pitch-600">
-          <span className="flex items-center gap-1"><span className="w-2 h-3 bg-green-500 rounded-sm inline-block" />Awans (1–2)</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-3 bg-blue-400 rounded-sm inline-block" />Baraże (3–6)</span>
+        <div className="flex gap-4 px-3 py-2 text-xs" style={{ borderTop: '1px solid rgba(30,58,42,0.5)', color: 'var(--text-muted)' }}>
+          <span className="flex items-center gap-1">
+            <span style={{ width: 8, height: 12, background: '#22c55e', borderRadius: 2, display: 'inline-block' }} />
+            Awans (1–2)
+          </span>
+          <span className="flex items-center gap-1">
+            <span style={{ width: 8, height: 12, background: '#38bdf8', borderRadius: 2, display: 'inline-block' }} />
+            Baraże (3–6)
+          </span>
         </div>
       </div>
     </div>

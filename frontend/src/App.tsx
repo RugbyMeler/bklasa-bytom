@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLeagueData } from './hooks/useLeagueData'
 import { Dashboard } from './components/Dashboard'
+import { Sidebar } from './components/Sidebar'
 import axios from 'axios'
 
 function Spinner() {
@@ -10,16 +11,16 @@ function Spinner() {
          style={{ background: 'var(--bg)' }}>
       <div className="relative w-20 h-20">
         <div className="absolute inset-0 rounded-full"
-             style={{ border: '3px solid rgba(45,74,99,0.5)' }} />
+             style={{ border: '3px solid rgba(30,58,42,0.6)' }} />
         <div className="absolute inset-0 rounded-full animate-spin"
-             style={{ border: '3px solid transparent', borderTopColor: '#4ade80' }} />
+             style={{ border: '3px solid transparent', borderTopColor: '#22c55e' }} />
         <div className="absolute inset-0 flex items-center justify-center text-3xl">⚽</div>
       </div>
       <div className="text-center">
-        <p className="font-semibold text-lg" style={{ fontFamily: "'Oswald', sans-serif", color: '#f8fafc', letterSpacing: '0.05em' }}>
+        <p className="font-semibold text-lg" style={{ fontFamily: "'Oswald', sans-serif", color: '#e8f0ec', letterSpacing: '0.08em' }}>
           ŁADOWANIE DANYCH
         </p>
-        <p className="text-sm mt-1" style={{ color: '#64748b' }}>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
           Pobieranie z regionalnyfutbol.pl i 90minut.pl...
         </p>
       </div>
@@ -32,25 +33,17 @@ function ErrorScreen({ error, onRetry }: { error: Error; onRetry: () => void }) 
     <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4"
          style={{ background: 'var(--bg)' }}>
       <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl"
-           style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)' }}>
+           style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
         🚫
       </div>
       <div className="text-center max-w-md">
-        <h2 className="text-xl font-semibold mb-2" style={{ color: '#f8fafc' }}>
+        <h2 className="text-xl font-semibold mb-2" style={{ color: '#e8f0ec' }}>
           Błąd pobierania danych
         </h2>
-        <p className="text-sm mb-4" style={{ color: '#94a3b8' }}>{error.message}</p>
-        <p className="text-xs mb-6" style={{ color: '#64748b' }}>
-          Upewnij się, że backend API jest uruchomiony na porcie 8000.<br />
-          Uruchom:{' '}
-          <code className="px-2 py-0.5 rounded text-xs"
-                style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}>
-            uvicorn main:app --reload
-          </code>
-        </p>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>{error.message}</p>
         <button onClick={onRetry}
           className="px-6 py-2 rounded-lg text-sm font-semibold transition-all"
-          style={{ background: 'linear-gradient(135deg, #16a34a, #4ade80)', color: '#0f172a' }}>
+          style={{ background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: '#0f172a' }}>
           Spróbuj ponownie
         </button>
       </div>
@@ -62,6 +55,14 @@ export default function App() {
   const { data, isLoading, error, refetch } = useLeagueData()
   const queryClient = useQueryClient()
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [activeSection, setActiveSection] = useState('wszystko')
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -80,5 +81,19 @@ export default function App() {
   if (error)     return <ErrorScreen error={error as Error} onRetry={() => refetch()} />
   if (!data)     return <Spinner />
 
-  return <Dashboard data={data} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      {!isMobile && (
+        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      )}
+      <div style={{ flex: 1, marginLeft: isMobile ? 0 : 220, minWidth: 0 }}>
+        <Dashboard
+          data={data}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          activeSection={activeSection}
+        />
+      </div>
+    </div>
+  )
 }

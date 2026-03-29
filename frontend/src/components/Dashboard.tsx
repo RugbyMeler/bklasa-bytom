@@ -29,6 +29,7 @@ interface Props {
   data: DashboardData
   onRefresh: () => void
   isRefreshing: boolean
+  activeSection: string
 }
 
 const DEFAULT_LAYOUT: Layout[] = [
@@ -104,7 +105,7 @@ function loadHidden(): Set<WidgetId> {
   catch { return new Set() }
 }
 
-export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
+export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Props) {
   const [layout, setLayout]         = useState<Layout[]>(loadLayout)
   const [hidden, setHidden]         = useState<Set<WidgetId>>(loadHidden)
   const [showPanel, setPanel]       = useState(false)
@@ -174,14 +175,14 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
 
   const lg = data.league
   const statBar = lg ? [
-    { label: 'Mecze',        value: lg.total_matches,          color: 'text-white' },
-    { label: 'Bramki',       value: lg.total_goals,             color: 'text-white' },
-    { label: 'Śr. goli',     value: lg.avg_goals_per_match,     color: 'text-accent-yellow' },
-    { label: 'BTTS',         value: `${lg.btts_pct}%`,          color: 'text-accent-cyan' },
-    { label: 'Over 2.5',     value: `${lg.over_25_pct}%`,       color: 'text-accent-orange' },
-    { label: 'Wygr. gosp.', value: `${lg.home_win_pct}%`,      color: 'text-accent-green' },
-    { label: 'Remisy',       value: `${lg.draw_pct}%`,          color: 'text-accent-yellow' },
-    { label: 'Wygr. gości', value: `${lg.away_win_pct}%`,      color: 'text-accent-red' },
+    { label: 'Mecze',        value: lg.total_matches,          color: 'text-[#e8f0ec]' },
+    { label: 'Bramki',       value: lg.total_goals,             color: 'text-[#e8f0ec]' },
+    { label: 'Śr. goli',     value: lg.avg_goals_per_match,     color: 'text-[#fbbf24]' },
+    { label: 'BTTS',         value: `${lg.btts_pct}%`,          color: 'text-[#22d3ee]' },
+    { label: 'Over 2.5',     value: `${lg.over_25_pct}%`,       color: 'text-[#fb923c]' },
+    { label: 'Wygr. gosp.', value: `${lg.home_win_pct}%`,      color: 'text-[#22c55e]' },
+    { label: 'Remisy',       value: `${lg.draw_pct}%`,          color: 'text-[#fbbf24]' },
+    { label: 'Wygr. gości', value: `${lg.away_win_pct}%`,      color: 'text-[#ef4444]' },
   ] : []
 
   // ── MOBILE VIEW ──────────────────────────────────────────────────────────
@@ -194,8 +195,8 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
         <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
           {/* Widget header */}
           <header style={{
-            background: 'linear-gradient(180deg, #0a1628 0%, #0c1e32 100%)',
-            borderBottom: '1px solid rgba(74,222,128,0.2)',
+            background: 'linear-gradient(180deg, #091510 0%, #0d1f17 100%)',
+            borderBottom: '1px solid var(--card-bd)',
             padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
@@ -208,16 +209,16 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
               onClick={() => setMobileWidget(null)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
-                color: '#4ade80', fontSize: '14px', fontWeight: 600,
+                color: 'var(--green)', fontSize: '14px', fontWeight: 600,
                 padding: '6px 10px', borderRadius: '8px',
-                background: 'rgba(74,222,128,0.1)',
-                border: '1px solid rgba(74,222,128,0.25)',
+                background: 'rgba(34,197,94,0.1)',
+                border: '1px solid rgba(34,197,94,0.25)',
               }}
             >
               <ArrowLeft size={16} />
               Wróć
             </button>
-            <span style={{ color: '#f8fafc', fontWeight: 600, fontSize: '15px' }}>
+            <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: '15px' }}>
               {WIDGET_ICONS[mobileWidget]}&nbsp;{WIDGET_LABELS[mobileWidget]}
             </span>
           </header>
@@ -225,13 +226,13 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
           <div style={{ padding: '12px' }}>
             {widget
               ? widget
-              : <p style={{ color: '#94a3b8', textAlign: 'center', paddingTop: '3rem', fontSize: '14px' }}>
+              : <p style={{ color: 'var(--text-muted)', textAlign: 'center', paddingTop: '3rem', fontSize: '14px' }}>
                   Brak danych dla tego widgetu
                 </p>
             }
           </div>
 
-          <footer style={{ textAlign: 'center', padding: '16px', fontSize: '11px', color: '#334155' }}>
+          <footer style={{ textAlign: 'center', padding: '16px', fontSize: '11px', color: 'var(--text-muted)' }}>
             Dane: regionalnyfutbol.pl · 90minut.pl
           </footer>
         </div>
@@ -258,8 +259,8 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
 
         {/* Mobile header */}
         <header style={{
-          background: 'linear-gradient(180deg, #0a1628 0%, #0c1e32 100%)',
-          borderBottom: '1px solid rgba(74,222,128,0.2)',
+          background: 'linear-gradient(180deg, #091510 0%, #0d1f17 100%)',
+          borderBottom: '1px solid var(--card-bd)',
           boxShadow: '0 4px 30px rgba(0,0,0,0.5)',
           padding: '12px 16px',
           position: 'sticky',
@@ -270,15 +271,15 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
                 width: 38, height: 38, borderRadius: '50%', fontSize: '20px',
-                background: 'linear-gradient(135deg, #16a34a, #4ade80)',
-                boxShadow: '0 0 16px rgba(74,222,128,0.4)',
+                background: 'linear-gradient(135deg, #16a34a, #22c55e)',
+                boxShadow: '0 0 16px rgba(34,197,94,0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>⚽</div>
               <div>
-                <h1 style={{ color: '#f8fafc', fontWeight: 700, fontSize: '15px', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>
+                <h1 style={{ color: 'var(--text)', fontWeight: 700, fontSize: '15px', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>
                   B-KLASA BYTOM
                 </h1>
-                <p style={{ color: 'rgba(148,163,184,0.8)', fontSize: '11px' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
                   Sezon 2025/2026 · {teams.length} drużyn
                 </p>
               </div>
@@ -287,7 +288,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
               onClick={onRefresh}
               disabled={isRefreshing}
               style={{
-                background: 'linear-gradient(135deg, #16a34a, #4ade80)',
+                background: 'linear-gradient(135deg, #16a34a, #22c55e)',
                 color: '#0f172a', padding: '7px 12px', borderRadius: '8px',
                 fontSize: '12px', fontWeight: 700,
                 display: 'flex', alignItems: 'center', gap: '5px',
@@ -305,12 +306,12 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
               marginTop: '10px',
               display: 'flex', gap: '14px',
               overflowX: 'auto', paddingBottom: '2px',
-              borderTop: '1px solid rgba(45,74,99,0.5)',
+              borderTop: '1px solid rgba(30,58,42,0.5)',
               paddingTop: '8px',
             }}>
               {statBar.map(s => (
                 <div key={s.label} className="shrink-0 flex items-center gap-1" style={{ fontSize: '11px' }}>
-                  <span style={{ color: '#64748b' }}>{s.label}:</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{s.label}:</span>
                   <span className={`font-bold ${s.color}`}>{s.value}</span>
                 </div>
               ))}
@@ -333,16 +334,16 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
                 onClick={() => available && setMobileWidget(id)}
                 style={{
                   background: available
-                    ? 'linear-gradient(135deg, rgba(22,32,50,0.95), rgba(12,30,50,0.9))'
-                    : 'rgba(15,23,42,0.5)',
-                  border: `1px solid ${available ? 'rgba(74,222,128,0.2)' : 'rgba(45,74,99,0.25)'}`,
-                  borderRadius: '14px',
+                    ? 'var(--card-bg)'
+                    : 'rgba(9,21,16,0.5)',
+                  border: `1px solid ${available ? 'var(--card-bd)' : 'rgba(30,58,42,0.25)'}`,
+                  borderRadius: '12px',
                   padding: '16px 10px',
                   textAlign: 'center',
                   cursor: available ? 'pointer' : 'default',
                   opacity: available ? 1 : 0.45,
                   transition: 'transform 0.1s, box-shadow 0.1s',
-                  boxShadow: available ? '0 2px 12px rgba(0,0,0,0.3)' : 'none',
+                  boxShadow: available ? '0 2px 12px rgba(0,0,0,0.4)' : 'none',
                 }}
                 onTouchStart={e => available && ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.96)')}
                 onTouchEnd={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)')}
@@ -351,7 +352,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
                   {WIDGET_ICONS[id]}
                 </div>
                 <div style={{
-                  color: available ? '#e2e8f0' : '#475569',
+                  color: available ? 'var(--text)' : 'var(--text-muted)',
                   fontSize: '12px',
                   fontWeight: 600,
                   lineHeight: 1.3,
@@ -363,7 +364,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
           })}
         </div>
 
-        <footer style={{ textAlign: 'center', padding: '16px 16px 28px', fontSize: '11px', color: '#334155' }}>
+        <footer style={{ textAlign: 'center', padding: '16px 16px 28px', fontSize: '11px', color: 'var(--text-muted)' }}>
           Dane: regionalnyfutbol.pl · 90minut.pl · Odświeżanie co 15 min
         </footer>
       </div>
@@ -376,66 +377,144 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
 
-      {/* ── Header ──────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 pitch-stripes" style={{
-        background: 'linear-gradient(180deg, #0a1628 0%, #0c1e32 100%)',
-        borderBottom: '1px solid rgba(74,222,128,0.2)',
-        boxShadow: '0 4px 30px rgba(0,0,0,0.5)',
+      {/* ── Desktop Hero Header ──────────────────────────── */}
+      <div className="pitch-stripes" style={{
+        padding: '28px 32px 20px',
+        borderBottom: '1px solid var(--card-bd)',
+        background: 'linear-gradient(180deg, #091510 0%, var(--bg) 100%)',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Decorative circles */}
+        <div style={{
+          position: 'absolute', right: -80, top: -80,
+          width: 320, height: 320, borderRadius: '50%',
+          border: '1px solid rgba(34,197,94,0.06)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', right: -40, top: -40,
+          width: 200, height: 200, borderRadius: '50%',
+          border: '1px solid rgba(34,197,94,0.08)',
+          pointerEvents: 'none',
+        }} />
 
-          {/* Logo + Title */}
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-2xl"
-                   style={{ background: 'linear-gradient(135deg, #16a34a, #4ade80)', boxShadow: '0 0 20px rgba(74,222,128,0.4)' }}>
-                ⚽
-              </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div className="live-dot" />
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                B-Klasa Bytom · Sezon 2025/2026
+              </span>
             </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight"
-                  style={{ fontFamily: "'Oswald', sans-serif", letterSpacing: '0.05em', color: '#f8fafc' }}>
-                B-KLASA BYTOM
-              </h1>
-              <p className="text-xs" style={{ color: 'rgba(148,163,184,0.8)' }}>
-                Sezon 2025/2026 · Śląski ZPN · {teams.length} drużyn
-              </p>
-            </div>
+            <h1 style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontSize: 42,
+              fontWeight: 700,
+              lineHeight: 1,
+              color: '#e8f0ec',
+              letterSpacing: '0.02em',
+              textTransform: 'uppercase',
+            }}>
+              LIGA
+            </h1>
+            <h1 style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontSize: 42,
+              fontWeight: 700,
+              fontStyle: 'italic',
+              lineHeight: 1,
+              color: 'var(--green)',
+              letterSpacing: '0.02em',
+              textTransform: 'uppercase',
+            }}>
+              BYTOM
+            </h1>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <button onClick={() => setPanel(!showPanel)}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all"
-              style={{ background: 'rgba(45,74,99,0.6)', border: '1px solid rgba(45,74,99,0.8)', color: '#94a3b8' }}>
-              <Settings size={12} />
-              Widgety
+          {/* Right side controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px',
+                background: isRefreshing ? 'rgba(34,197,94,0.1)' : 'rgba(34,197,94,0.12)',
+                border: '1px solid rgba(34,197,94,0.3)',
+                borderRadius: 8,
+                color: 'var(--green)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                letterSpacing: '0.04em',
+                transition: 'all 0.15s',
+              }}
+            >
+              <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
+              {isRefreshing ? 'ODŚWIEŻANIE...' : 'ODŚWIEŻ'}
             </button>
-            <button onClick={resetLayout}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all"
-              style={{ background: 'rgba(45,74,99,0.6)', border: '1px solid rgba(45,74,99,0.8)', color: '#94a3b8' }}>
-              <RotateCcw size={12} />
-              Reset
+            <button
+              onClick={() => setPanel(p => !p)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px',
+                background: showPanel ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${showPanel ? 'rgba(34,197,94,0.4)' : 'var(--card-bd)'}`,
+                borderRadius: 8,
+                color: showPanel ? 'var(--green)' : 'var(--text-muted)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+                transition: 'all 0.15s',
+              }}
+            >
+              <Settings size={13} />
+              WIDGETY
             </button>
-            <button onClick={onRefresh} disabled={isRefreshing}
-              className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #16a34a, #4ade80)', color: '#0f172a', boxShadow: '0 0 15px rgba(74,222,128,0.3)' }}>
-              <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-              {isRefreshing ? 'Odświeżanie...' : 'Odśwież'}
+            <button
+              onClick={resetLayout}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid var(--card-bd)',
+                borderRadius: 8,
+                color: 'var(--text-muted)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+                transition: 'all 0.15s',
+              }}
+            >
+              <RotateCcw size={13} />
+              RESET
             </button>
           </div>
         </div>
 
         {/* Widget toggle panel */}
         {showPanel && (
-          <div className="max-w-[1600px] mx-auto px-4 pb-3 flex flex-wrap gap-1.5">
+          <div style={{
+            marginTop: 16,
+            paddingTop: 14,
+            borderTop: '1px solid var(--card-bd)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 6,
+          }}>
             {(Object.keys(WIDGET_LABELS) as WidgetId[]).filter(id => id !== 'schedule').map(id => (
               <button key={id} onClick={() => toggleWidget(id)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all"
                 style={{
-                  background: hidden.has(id) ? 'rgba(30,45,61,0.4)' : 'rgba(74,222,128,0.1)',
-                  border: `1px solid ${hidden.has(id) ? 'rgba(45,74,99,0.5)' : 'rgba(74,222,128,0.3)'}`,
-                  color: hidden.has(id) ? '#475569' : '#4ade80',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 11, padding: '5px 10px', borderRadius: 8,
+                  background: hidden.has(id) ? 'rgba(18,34,24,0.6)' : 'rgba(34,197,94,0.1)',
+                  border: `1px solid ${hidden.has(id) ? 'rgba(30,58,42,0.5)' : 'rgba(34,197,94,0.3)'}`,
+                  color: hidden.has(id) ? 'var(--text-muted)' : 'var(--green)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
                 }}>
                 {hidden.has(id) ? <EyeOff size={10} /> : <Eye size={10} />}
                 {WIDGET_ICONS[id]} {WIDGET_LABELS[id]}
@@ -446,21 +525,26 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
 
         {/* Stats bar */}
         {statBar.length > 0 && (
-          <div style={{ background: 'rgba(0,0,0,0.25)', borderTop: '1px solid rgba(45,74,99,0.5)' }}>
-            <div className="max-w-[1600px] mx-auto px-4 py-2 flex gap-5 overflow-x-auto">
-              {statBar.map(s => (
-                <div key={s.label} className="flex items-center gap-1.5 shrink-0 text-xs">
-                  <span style={{ color: '#64748b' }}>{s.label}:</span>
-                  <span className={`font-bold ${s.color}`}>{s.value}</span>
-                </div>
-              ))}
-            </div>
+          <div style={{
+            marginTop: 14,
+            paddingTop: 12,
+            borderTop: '1px solid rgba(30,58,42,0.5)',
+            display: 'flex',
+            gap: 20,
+            overflowX: 'auto',
+          }}>
+            {statBar.map(s => (
+              <div key={s.label} className="flex items-center gap-1.5 shrink-0 text-xs">
+                <span style={{ color: 'var(--text-muted)' }}>{s.label}:</span>
+                <span className={`font-bold ${s.color}`}>{s.value}</span>
+              </div>
+            ))}
           </div>
         )}
-      </header>
+      </div>
 
       {/* ── Grid ────────────────────────────────────────── */}
-      <div ref={containerRef} className="max-w-[1600px] mx-auto px-4 py-4">
+      <div ref={containerRef} style={{ padding: '16px 24px' }}>
         <GridLayout
           layout={visibleLayout}
           cols={12}
@@ -483,7 +567,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
       </div>
 
       {/* ── Footer ──────────────────────────────────────── */}
-      <footer className="text-center py-6 text-xs" style={{ color: '#334155' }}>
+      <footer className="text-center py-6 text-xs" style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--card-bd)', marginTop: 8 }}>
         Dane: regionalnyfutbol.pl · 90minut.pl · laczynaspilka.pl &nbsp;|&nbsp; Odśwież co 15 min
       </footer>
     </div>
