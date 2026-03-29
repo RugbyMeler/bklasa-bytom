@@ -56,6 +56,10 @@ export default function App() {
   const queryClient = useQueryClient()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeSection, setActiveSection] = useState('wszystko')
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
   useEffect(() => {
@@ -84,7 +88,7 @@ export default function App() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {!isMobile && (
-        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        <Sidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
       )}
       <div style={{ flex: 1, marginLeft: isMobile ? 0 : 220, minWidth: 0 }}>
         <Dashboard

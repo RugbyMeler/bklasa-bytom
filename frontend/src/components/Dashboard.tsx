@@ -42,16 +42,15 @@ const DEFAULT_LAYOUT: Layout[] = [
   { i: 'home_away',           x: 6, y: 39,  w: 6,  h: 12 },
   { i: 'upcoming_matches',    x: 0, y: 51,  w: 6,  h: 14 },
   { i: 'positions_over_time', x: 6, y: 51,  w: 6,  h: 14 },
-  { i: 'positions_over_time', x: 0, y: 65,  w: 12, h: 18 },
-  { i: 'goals_trend',         x: 0, y: 69,  w: 6,  h: 15 },
-  { i: 'clean_sheets',        x: 6, y: 69,  w: 6,  h: 15 },
-  { i: 'streaks',             x: 0, y: 84,  w: 12, h: 10 },
-  { i: 'elo',                 x: 0, y: 94,  w: 6,  h: 20 },
-  { i: 'form_table',          x: 6, y: 94,  w: 6,  h: 14 },
-  { i: 'title_relegation',    x: 0, y: 114, w: 7,  h: 16 },
-  { i: 'points_pace',         x: 7, y: 114, w: 5,  h: 16 },
-  { i: 'h2h_matrix',          x: 0, y: 130, w: 12, h: 20 },
-  { i: 'scoreline_stats',     x: 0, y: 150, w: 6,  h: 18 },
+  { i: 'goals_trend',         x: 0, y: 65,  w: 6,  h: 15 },
+  { i: 'clean_sheets',        x: 6, y: 65,  w: 6,  h: 15 },
+  { i: 'streaks',             x: 0, y: 80,  w: 12, h: 10 },
+  { i: 'elo',                 x: 0, y: 90,  w: 6,  h: 20 },
+  { i: 'form_table',          x: 6, y: 90,  w: 6,  h: 14 },
+  { i: 'title_relegation',    x: 0, y: 110, w: 7,  h: 16 },
+  { i: 'points_pace',         x: 7, y: 110, w: 5,  h: 16 },
+  { i: 'h2h_matrix',          x: 0, y: 126, w: 12, h: 20 },
+  { i: 'scoreline_stats',     x: 0, y: 146, w: 6,  h: 18 },
 ]
 
 const WIDGET_LABELS: Record<WidgetId, string> = {
@@ -85,8 +84,18 @@ const WIDGET_ICONS: Record<WidgetId, string> = {
   positions_over_time: '📉',
 }
 
-const STORAGE_KEY = 'bytom-dashboard-layout-v5'
-const HIDDEN_KEY  = 'bytom-dashboard-hidden-v5'
+// Which widgets are shown for each sidebar section
+const SECTION_WIDGETS: Record<string, WidgetId[]> = {
+  tabela:     ['standings', 'league_stats', 'title_relegation', 'points_pace'],
+  wyniki:     ['results', 'scoreline_stats', 'round_summary'],
+  terminarz:  ['upcoming_matches', 'results'],
+  forma:      ['form', 'form_table', 'streaks', 'positions_over_time', 'elo'],
+  statystyki: ['pythagorean', 'home_away', 'goals_trend', 'clean_sheets', 'h2h_matrix'],
+  wszystko:   [], // empty = show all
+}
+
+const STORAGE_KEY = 'bytom-dashboard-layout-v6'
+const HIDDEN_KEY  = 'bytom-dashboard-hidden-v6'
 
 // Mobile widget order (most important first)
 const MOBILE_WIDGET_ORDER: WidgetId[] = [
@@ -97,7 +106,10 @@ const MOBILE_WIDGET_ORDER: WidgetId[] = [
 ]
 
 function loadLayout(): Layout[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') ?? DEFAULT_LAYOUT }
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+    return (Array.isArray(saved) && saved.length > 0) ? saved : DEFAULT_LAYOUT
+  }
   catch { return DEFAULT_LAYOUT }
 }
 function loadHidden(): Set<WidgetId> {
@@ -125,9 +137,15 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Prop
     obs.observe(node)
   }, [])
 
-  const handleLayoutChange = (l: Layout[]) => {
-    setLayout(l)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(l))
+  const handleLayoutChange = (changed: Layout[]) => {
+    // Merge changed items back into the full layout so filtered sections
+    // don't overwrite widgets they don't know about
+    setLayout(prev => {
+      const changedById = Object.fromEntries(changed.map(l => [l.i, l]))
+      const merged = prev.map(l => changedById[l.i] ?? l)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+      return merged
+    })
   }
 
   const toggleWidget = (id: WidgetId) => {
@@ -372,6 +390,7 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Prop
   }
 
   // ── DESKTOP VIEW ─────────────────────────────────────────────────────────
+  const sectionFilter = SECTION_WIDGETS[activeSection] ?? []
   const visibleLayout = layout.filter(l => !hidden.has(l.i as WidgetId))
 
   return (
@@ -543,27 +562,46 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Prop
         )}
       </div>
 
-      {/* ── Grid ────────────────────────────────────────── */}
+      {/* ── Grid / Section view ─────────────────────────── */}
       <div ref={containerRef} style={{ padding: '16px 24px' }}>
-        <GridLayout
-          layout={visibleLayout}
-          cols={12}
-          rowHeight={36}
-          width={containerWidth}
-          onLayoutChange={handleLayoutChange}
-          draggableHandle=".widget-header"
-          draggableCancel="button,select,input,a,.no-drag"
-          margin={[12, 12]}
-          containerPadding={[0, 0]}
-          resizeHandles={['se']}
-          compactType="vertical"
-        >
-          {visibleLayout.map(item => {
-            const widget = renderWidget(item.i as WidgetId)
-            if (!widget) return null
-            return <div key={item.i} className="cursor-default">{widget}</div>
-          })}
-        </GridLayout>
+        {sectionFilter.length > 0 ? (
+          // Section view: simple 2-col responsive layout, no drag needed
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {sectionFilter.map(id => {
+              if (hidden.has(id)) return null
+              const widget = renderWidget(id)
+              if (!widget) return null
+              // Give wide widgets (like streaks, h2h) full width
+              const fullWidth = ['streaks', 'h2h_matrix', 'scoreline_stats', 'round_summary', 'elo', 'positions_over_time'].includes(id)
+              return (
+                <div key={id} style={{ gridColumn: fullWidth ? '1 / -1' : 'auto', minHeight: 320 }}>
+                  {widget}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          // Full dashboard: draggable/resizable grid
+          <GridLayout
+            layout={visibleLayout}
+            cols={12}
+            rowHeight={36}
+            width={containerWidth}
+            onLayoutChange={handleLayoutChange}
+            draggableHandle=".widget-header"
+            draggableCancel="button,select,input,a,.no-drag"
+            margin={[12, 12]}
+            containerPadding={[0, 0]}
+            resizeHandles={['se']}
+            compactType="vertical"
+          >
+            {visibleLayout.map(item => {
+              const widget = renderWidget(item.i as WidgetId)
+              if (!widget) return null
+              return <div key={item.i} className="cursor-default">{widget}</div>
+            })}
+          </GridLayout>
+        )}
       </div>
 
       {/* ── Footer ──────────────────────────────────────── */}
