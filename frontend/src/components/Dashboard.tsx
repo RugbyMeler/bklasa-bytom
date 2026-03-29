@@ -20,6 +20,7 @@ import { TitleRelegationWidget } from './widgets/TitleRelegationWidget'
 import { PointsPaceWidget }      from './widgets/PointsPaceWidget'
 import { PositionsWidget }       from './widgets/PositionsWidget'
 import { RoundSummaryWidget }    from './widgets/RoundSummaryWidget'
+import { UpcomingMatchesWidget } from './widgets/UpcomingMatchesWidget'
 
 import type { DashboardData, WidgetId } from '../types'
 import { ArrowLeft, Eye, EyeOff, RotateCcw, RefreshCw, Settings } from 'lucide-react'
@@ -38,7 +39,9 @@ const DEFAULT_LAYOUT: Layout[] = [
   { i: 'form',                x: 6, y: 25,  w: 6,  h: 14 },
   { i: 'results',             x: 0, y: 39,  w: 6,  h: 12 },
   { i: 'home_away',           x: 6, y: 39,  w: 6,  h: 12 },
-  { i: 'positions_over_time', x: 0, y: 51,  w: 12, h: 18 },
+  { i: 'upcoming_matches',    x: 0, y: 51,  w: 6,  h: 14 },
+  { i: 'positions_over_time', x: 6, y: 51,  w: 6,  h: 14 },
+  { i: 'positions_over_time', x: 0, y: 65,  w: 12, h: 18 },
   { i: 'goals_trend',         x: 0, y: 69,  w: 6,  h: 15 },
   { i: 'clean_sheets',        x: 6, y: 69,  w: 6,  h: 15 },
   { i: 'streaks',             x: 0, y: 84,  w: 12, h: 10 },
@@ -52,6 +55,7 @@ const DEFAULT_LAYOUT: Layout[] = [
 
 const WIDGET_LABELS: Record<WidgetId, string> = {
   round_summary:       'Podsumowanie kolejki',
+  upcoming_matches:    'Terminarz',
   standings:           'Tabela',
   pythagorean:         'Pitagoras',
   form:                'Forma',
@@ -72,7 +76,7 @@ const WIDGET_LABELS: Record<WidgetId, string> = {
 }
 
 const WIDGET_ICONS: Record<WidgetId, string> = {
-  round_summary: '📰', standings: '🏆', pythagorean: '📐', form: '📈',
+  round_summary: '📰', upcoming_matches: '📆', standings: '🏆', pythagorean: '📐', form: '📈',
   results: '📅', league_stats: '📊', home_away: '🏟️', goals_trend: '📉',
   clean_sheets: '🛡️', streaks: '🔥', schedule: '🗓️',
   elo: '⚡', form_table: '🔥', h2h_matrix: '⚔️',
@@ -80,12 +84,12 @@ const WIDGET_ICONS: Record<WidgetId, string> = {
   positions_over_time: '📉',
 }
 
-const STORAGE_KEY = 'bytom-dashboard-layout-v4'
-const HIDDEN_KEY  = 'bytom-dashboard-hidden-v4'
+const STORAGE_KEY = 'bytom-dashboard-layout-v5'
+const HIDDEN_KEY  = 'bytom-dashboard-hidden-v5'
 
 // Mobile widget order (most important first)
 const MOBILE_WIDGET_ORDER: WidgetId[] = [
-  'round_summary', 'standings', 'results', 'form', 'positions_over_time',
+  'round_summary', 'standings', 'upcoming_matches', 'results', 'form', 'positions_over_time',
   'form_table', 'elo', 'title_relegation', 'points_pace',
   'pythagorean', 'home_away', 'goals_trend', 'clean_sheets',
   'streaks', 'h2h_matrix', 'scoreline_stats', 'league_stats',
@@ -163,6 +167,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
       case 'points_pace':         return data.title_relegation?.length ? <PointsPaceWidget data={data.title_relegation} /> : null
       case 'positions_over_time': return data.positions_over_time?.rounds.length ? <PositionsWidget data={data.positions_over_time} /> : null
       case 'round_summary':       return <RoundSummaryWidget initial={data.round_summary} />
+      case 'upcoming_matches':    return <UpcomingMatchesWidget schedule={data.schedule ?? []} teams={teams.map(t => t.name)} />
       default: return null
     }
   }

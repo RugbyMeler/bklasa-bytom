@@ -345,8 +345,45 @@ def fetch_cards() -> list[dict]:
     return cards
 
 
+_POLISH_MONTHS = {
+    "stycznia": "01", "lutego": "02", "marca": "03", "kwietnia": "04",
+    "maja": "05", "czerwca": "06", "lipca": "07", "sierpnia": "08",
+    "września": "09", "października": "10", "listopada": "11", "grudnia": "12",
+}
+
+
+def _parse_fixture_date(raw: str) -> tuple[str, str]:
+    """
+    Parse the date cell from an upcoming fixture row.
+    Raw text looks like: '5  kwietnia 20265.04- 17:00'
+    Returns (date_str, time_str) e.g. ('2026-04-05', '17:00').
+    """
+    # Extract time
+    time_m = re.search(r"(\d{1,2}:\d{2})\s*$", raw)
+    time_str = time_m.group(1) if time_m else ""
+
+    # Try "DD  Month YYYY" pattern with Polish month names
+    for pl, num in _POLISH_MONTHS.items():
+        m = re.search(rf"(\d{{1,2}})\s+{pl}\s+(\d{{4}})", raw, re.IGNORECASE)
+        if m:
+            day = m.group(1).zfill(2)
+            year = m.group(2)
+            return f"{year}-{num}-{day}", time_str
+
+    # Fallback: DD.MM pattern (extract year from 4-digit number nearby)
+    dm = re.search(r"(\d{1,2})\.(\d{2})", raw)
+    yr = re.search(r"(\d{4})", raw)
+    if dm:
+        day = dm.group(1).zfill(2)
+        month = dm.group(2)
+        year = yr.group(1) if yr else "2026"
+        return f"{year}-{month}-{day}", time_str
+
+    return "", time_str
+
+
 def fetch_schedule() -> list[dict]:
-    """Upcoming fixtures — from same table as results, rows without a numeric score."""
+    """Upcoming fixtures — rows with druzyna-1/druzyna-2 cells and no numeric score."""
     soup = _get_soup(URLS["schedule"])
     if not soup:
         return []
@@ -359,37 +396,54 @@ def fetch_schedule() -> list[dict]:
     current_round = None
 
     for row in tables[1].find_all("tr"):
+        # Round header rows (≤2 cells)
         cells = row.find_all("td")
         if not cells:
             continue
-        texts = [c.get_text(strip=True) for c in cells]
 
         if len(cells) <= 2:
-            round_match = re.search(r"[Kk]olejka\s+(\d+)", texts[0])
+            round_match = re.search(r"[Kk]olejka\s+(\d+)", cells[0].get_text(strip=True))
             if round_match:
                 current_round = int(round_match.group(1))
             continue
 
-        full = " ".join(texts)
+        # Use CSS classes to locate home/away team cells reliably
+        home_td = row.find("td", class_="druzyna-1")
+        away_td = row.find("td", class_="druzyna-2")
+        score_td = row.find("td", class_="wynik")
+        date_td = row.find("td", class_="data-meczu")
 
-        # Skip played matches
-        if re.search(r"\d+\s*[-:]\s*\d+", full):
+        if not home_td or not away_td or not score_td:
             continue
 
-        date_m = re.search(r"\d{1,2}[./]\d{1,2}[./]\d{2,4}", full)
-        if not date_m:
+        score_text = score_td.get_text(strip=True)
+
+        # Skip played matches (score contains digits)
+        if re.search(r"\d", score_text):
             continue
 
-        links = row.find_all("a")
-        teams = [a.get_text(strip=True) for a in links if a.get_text(strip=True)]
-        if len(teams) < 2:
+        home_team = home_td.get_text(strip=True)
+        away_team = away_td.get_text(strip=True)
+        if not home_team or not away_team:
             continue
+
+        # Parse date from span.normal-date and time from trailing text
+        date_str, time_str = "", ""
+        if date_td:
+            normal = date_td.find("span", class_="normal-date")
+            date_raw = normal.get_text(strip=True) if normal else date_td.get_text(strip=True)
+            date_str, time_str = _parse_fixture_date(date_raw)
+            # Time is in the td text after the span
+            time_m = re.search(r"(\d{1,2}:\d{2})", date_td.get_text())
+            if time_m:
+                time_str = time_m.group(1)
 
         fixtures.append({
-            "round": current_round,
-            "date": date_m.group(0),
-            "home_team": teams[0],
-            "away_team": teams[-1],
+            "round":     current_round,
+            "date":      date_str,
+            "time":      time_str,
+            "home_team": home_team,
+            "away_team": away_team,
         })
 
     return fixtures

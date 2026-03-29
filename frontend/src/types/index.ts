@@ -60,10 +60,11 @@ export interface AdvancedTeamStats extends TeamStanding {
 export interface MatchResult {
   round: number | null
   date: string
+  time?: string
   home_team: string
   away_team: string
-  home_goals: number
-  away_goals: number
+  home_goals?: number
+  away_goals?: number
   source?: string
 }
 
@@ -196,3 +197,4 @@ export type WidgetId =
   | 'points_pace'
   | 'positions_over_time'
   | 'round_summary'
+  | 'upcoming_matches'
