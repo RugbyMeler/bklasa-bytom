@@ -1,13 +1,14 @@
 """
 FastAPI backend for B-klasa Bytom Football Dashboard.
-Aggregates data from 90minut.pl and regionalnyfutbol.pl.
+Results scraped exclusively from 90minut.pl; all stats computed from those results.
+Schedule (upcoming fixtures) still fetched from regionalnyfutbol.pl.
 """
 
 import json
 import os
 import re
 import time
-from functools import lru_cache
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,6 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from scrapers.scraper_90minut import (
-    fetch_standings as fetch_standings_90,
     fetch_results as fetch_results_90,
 )
 from scrapers.scraper_lnp import (
@@ -28,8 +28,6 @@ from scrapers.scraper_lnp import (
     _load_cache as lnp_cache_load,
 )
 from scrapers.scraper_regionalnyfutbol import (
-    fetch_standings as fetch_standings_rf,
-    fetch_results as fetch_results_rf,
     fetch_scorers as fetch_scorers_rf,
     fetch_cards as fetch_cards_rf,
     fetch_schedule as fetch_schedule_rf,
@@ -94,25 +92,25 @@ WITHDRAWN_TEAMS: set[str] = {"Nadzieja II Bytom"}
 WITHDRAWAL_FROM_ROUND: int = 17
 
 
-def _filter_withdrawn(standings: list[dict], results: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Remove withdrawn teams from standings and cancel only their return fixtures.
-    First-half results (round < WITHDRAWAL_FROM_ROUND) still count.
-    Also recomputes played/won/drawn/lost/gf/ga/points from filtered results."""
-    def _involves_withdrawn(r: dict) -> bool:
-        return r.get("home_team", "") in WITHDRAWN_TEAMS or r.get("away_team", "") in WITHDRAWN_TEAMS
+def compute_standings_from_results(results: list[dict]) -> list[dict]:
+    """Build a full standings table purely from match results.
 
-    clean_results = [
-        r for r in results
-        if not _involves_withdrawn(r) or (r.get("round") or 0) < WITHDRAWAL_FROM_ROUND
-    ]
+    Only includes teams that appear in results (excluding WITHDRAWN_TEAMS).
+    Stats are computed from scratch — no external standings source needed.
+    """
+    stats: dict = defaultdict(lambda: {
+        "played": 0, "won": 0, "drawn": 0, "lost": 0,
+        "gf": 0, "ga": 0, "points": 0,
+    })
 
-    # Recompute per-team stats from filtered results
-    from collections import defaultdict
-    stats: dict = defaultdict(lambda: {"played": 0, "won": 0, "drawn": 0, "lost": 0, "gf": 0, "ga": 0, "points": 0})
-    for r in clean_results:
-        ht, at = r.get("home_team", ""), r.get("away_team", "")
-        hg, ag = r.get("home_goals", 0), r.get("away_goals", 0)
-        if not ht or not at:
+    for r in results:
+        ht = r.get("home_team", "")
+        at = r.get("away_team", "")
+        hg = r.get("home_goals")
+        ag = r.get("away_goals")
+        if not ht or not at or hg is None or ag is None:
+            continue
+        if ht in WITHDRAWN_TEAMS or at in WITHDRAWN_TEAMS:
             continue
         for team, gf, ga in [(ht, hg, ag), (at, ag, hg)]:
             s = stats[team]
@@ -128,33 +126,40 @@ def _filter_withdrawn(standings: list[dict], results: list[dict]) -> tuple[list[
             else:
                 s["lost"] += 1
 
-    clean_standings = []
-    for t in standings:
-        name = t.get("name", "")
-        if name in WITHDRAWN_TEAMS:
-            continue
-        s = stats.get(name, {})
-        gf = s.get("gf", t.get("goals_for", 0))
-        ga = s.get("ga", t.get("goals_against", 0))
-        updated = {
-            **t,
-            "played":         s.get("played",  t.get("played", 0)),
-            "won":            s.get("won",     t.get("won", 0)),
-            "drawn":          s.get("drawn",   t.get("drawn", 0)),
-            "lost":           s.get("lost",    t.get("lost", 0)),
-            "goals_for":      gf,
-            "goals_against":  ga,
+    standings = []
+    for name, s in stats.items():
+        gf, ga = s["gf"], s["ga"]
+        standings.append({
+            "position": 0,  # filled below
+            "name": name,
+            "club_id": None,
+            "played": s["played"],
+            "won": s["won"],
+            "drawn": s["drawn"],
+            "lost": s["lost"],
+            "goals_for": gf,
+            "goals_against": ga,
             "goal_difference": gf - ga,
-            "points":         s.get("points",  t.get("points", 0)),
-        }
-        clean_standings.append(updated)
+            "points": s["points"],
+            "source": "computed",
+        })
 
-    # Re-sort by points/GD/GF and re-number positions
-    clean_standings.sort(key=lambda t: (t["points"], t["goal_difference"], t["goals_for"]), reverse=True)
-    for i, t in enumerate(clean_standings, 1):
+    standings.sort(key=lambda t: (t["points"], t["goal_difference"], t["goals_for"]), reverse=True)
+    for i, t in enumerate(standings, 1):
         t["position"] = i
 
-    return clean_standings, clean_results
+    return standings
+
+
+def _filter_results(results: list[dict]) -> list[dict]:
+    """Remove withdrawn teams' fixtures from the return half of the season."""
+    def _involves_withdrawn(r: dict) -> bool:
+        return r.get("home_team", "") in WITHDRAWN_TEAMS or r.get("away_team", "") in WITHDRAWN_TEAMS
+
+    return [
+        r for r in results
+        if not _involves_withdrawn(r) or (r.get("round") or 0) < WITHDRAWAL_FROM_ROUND
+    ]
 
 
 def _cached(key: str, fn, *args, **kwargs):
@@ -168,61 +173,23 @@ def _cached(key: str, fn, *args, **kwargs):
     return value
 
 
-def _merge_standings(primary: list[dict], secondary: list[dict]) -> list[dict]:
-    """Use primary source if available and has sufficient data, else fall back to secondary."""
-    if len(primary) >= 6:
-        return primary
-    if len(secondary) >= 6:
-        return secondary
-    # Merge: use longer list
-    return primary if len(primary) >= len(secondary) else secondary
-
-
-def _merge_results(r1: list[dict], r2: list[dict]) -> list[dict]:
-    """De-duplicate results across sources by matching teams + score."""
-    seen = set()
-    merged = []
-    for r in r1 + r2:
-        hg = r.get("home_goals")
-        ag = r.get("away_goals")
-        # Filter out walkover/scraper artifacts: no realistic B-klasa match has >12 goals per side
-        if hg is not None and ag is not None and (hg > 12 or ag > 12):
-            continue
-        key = (
-            r.get("home_team", "").strip().lower(),
-            r.get("away_team", "").strip().lower(),
-            hg,
-            ag,
-        )
-        if key not in seen and None not in key:
-            seen.add(key)
-            merged.append(r)
-    # Sort by round if available
-    merged.sort(key=lambda x: (x.get("round") or 0))
-    return merged
-
-
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "sources": ["90minut.pl", "regionalnyfutbol.pl"]}
+    return {"status": "ok", "sources": ["90minut.pl"]}
 
 
 @app.get("/api/standings")
 def get_standings():
-    s90 = _cached("standings_90", fetch_standings_90)
-    srf = _cached("standings_rf", fetch_standings_rf)
-    merged = _merge_standings(srf, s90)  # prefer regionalnyfutbol as it's more accessible
-    if not merged:
-        raise HTTPException(503, "Could not fetch standings from any source")
-    return {"standings": merged, "count": len(merged)}
+    standings, _ = _get_clean_data()
+    if not standings:
+        raise HTTPException(503, "Could not compute standings from results")
+    return {"standings": standings, "count": len(standings)}
 
 
 @app.get("/api/results")
 def get_results():
-    r90 = _cached("results_90", fetch_results_90)
-    rrf = _cached("results_rf", fetch_results_rf)
-    merged = _merge_results(r90, rrf)
-    return {"results": merged, "count": len(merged)}
+    _, results = _get_clean_data()
+    return {"results": results, "count": len(results)}
 
 
 @app.get("/api/scorers")
@@ -245,20 +212,11 @@ def get_schedule():
 
 @app.get("/api/advanced-stats")
 def get_advanced_stats():
-    standings = _cached("standings_rf", fetch_standings_rf)
+    standings, results = _get_clean_data()
     if not standings:
-        standings = _cached("standings_90", fetch_standings_90)
-
-    r90 = _cached("results_90", fetch_results_90)
-    rrf = _cached("results_rf", fetch_results_rf)
-    results = _merge_results(r90, rrf)
-
-    if not standings:
-        raise HTTPException(503, "Could not compute advanced stats — no standings data")
-
+        raise HTTPException(503, "Could not compute advanced stats — no results data")
     advanced = compute_all_advanced_stats(standings, results)
     league = compute_league_stats(results)
-
     return {
         "teams": advanced,
         "league": league,
@@ -268,12 +226,7 @@ def get_advanced_stats():
 
 @app.get("/api/team/{team_name}")
 def get_team(team_name: str):
-    standings = _cached("standings_rf", fetch_standings_rf) or _cached("standings_90", fetch_standings_90)
-    r90 = _cached("results_90", fetch_results_90)
-    rrf = _cached("results_rf", fetch_results_rf)
-    results = _merge_results(r90, rrf)
-
-    # Find team (fuzzy match)
+    standings, results = _get_clean_data()
     team_name_lower = team_name.lower()
     team_standing = next(
         (t for t in standings if team_name_lower in t.get("name", "").lower()),
@@ -281,14 +234,12 @@ def get_team(team_name: str):
     )
     if not team_standing:
         raise HTTPException(404, f"Team '{team_name}' not found")
-
     advanced = compute_all_advanced_stats([team_standing], results)
     team_results = [
         r for r in results
         if team_name_lower in r.get("home_team", "").lower()
         or team_name_lower in r.get("away_team", "").lower()
     ]
-
     return {
         "team": advanced[0] if advanced else team_standing,
         "matches": team_results,
@@ -378,12 +329,16 @@ def get_round_summary():
 
 
 def _get_clean_data() -> tuple[list[dict], list[dict]]:
-    """Return standings and results with withdrawn teams removed."""
-    standings = _cached("standings_rf", fetch_standings_rf) or _cached("standings_90", fetch_standings_90)
-    r90 = _cached("results_90", fetch_results_90)
-    rrf = _cached("results_rf", fetch_results_rf)
-    results = _merge_results(r90, rrf)
-    return _filter_withdrawn(standings, results)
+    """Return standings and results computed purely from 90minut.pl results.
+
+    Withdrawn teams are excluded from the return half of the season.
+    Standings are derived entirely from the filtered results — no external
+    standings source is used.
+    """
+    raw_results = _cached("results_90", fetch_results_90)
+    results = _filter_results(raw_results)
+    standings = compute_standings_from_results(results)
+    return standings, results
 
 
 @app.get("/api/elo")
