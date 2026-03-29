@@ -155,14 +155,11 @@ def compute_standings_from_results(results: list[dict]) -> list[dict]:
 
 
 def _filter_results(results: list[dict]) -> list[dict]:
-    """Remove withdrawn teams' fixtures from the return half of the season."""
-    def _involves_withdrawn(r: dict) -> bool:
-        return r.get("home_team", "") in WITHDRAWN_TEAMS or r.get("away_team", "") in WITHDRAWN_TEAMS
-
-    return [
-        r for r in results
-        if not _involves_withdrawn(r) or (r.get("round") or 0) < WITHDRAWAL_FROM_ROUND
-    ]
+    """Keep all results as-is — walkovers for withdrawn teams' spring fixtures
+    are already recorded as 3-0 on 90minut.pl and count toward opponents' stats.
+    Nadzieja is excluded from the standings table in compute_standings_from_results.
+    """
+    return results
 
 
 def _cached(key: str, fn, *args, **kwargs):
