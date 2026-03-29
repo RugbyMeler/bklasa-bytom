@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import GridLayout, { Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -18,10 +18,10 @@ import { H2HMatrixWidget }       from './widgets/H2HMatrixWidget'
 import { ScorelineWidget }       from './widgets/ScorelineWidget'
 import { TitleRelegationWidget } from './widgets/TitleRelegationWidget'
 import { PointsPaceWidget }      from './widgets/PointsPaceWidget'
-import { PositionsWidget }      from './widgets/PositionsWidget'
+import { PositionsWidget }       from './widgets/PositionsWidget'
 
 import type { DashboardData, WidgetId } from '../types'
-import { Eye, EyeOff, RotateCcw, RefreshCw, Settings } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, RotateCcw, RefreshCw, Settings } from 'lucide-react'
 
 interface Props {
   data: DashboardData
@@ -49,22 +49,22 @@ const DEFAULT_LAYOUT: Layout[] = [
 ]
 
 const WIDGET_LABELS: Record<WidgetId, string> = {
-  standings:        'Tabela',
-  pythagorean:      'Pitagoras',
-  form:             'Forma',
-  results:          'Wyniki',
-  league_stats:     'Liga',
-  home_away:        'Dom/Wyjazd',
-  goals_trend:      'Trendy goli',
-  clean_sheets:     'Defensywa',
-  streaks:          'Passy',
-  schedule:         'Terminarz',
-  elo:              'Ranking Elo',
-  form_table:       'Forma 5 meczy',
-  h2h_matrix:       'H2H Matrix',
-  scoreline_stats:  'Wyniki meczy',
-  title_relegation:   'Awans/Play-off',
-  points_pace:        'Projekcja sezonu',
+  standings:           'Tabela',
+  pythagorean:         'Pitagoras',
+  form:                'Forma',
+  results:             'Wyniki',
+  league_stats:        'Liga',
+  home_away:           'Dom/Wyjazd',
+  goals_trend:         'Trendy goli',
+  clean_sheets:        'Defensywa',
+  streaks:             'Passy',
+  schedule:            'Terminarz',
+  elo:                 'Ranking Elo',
+  form_table:          'Forma 5 meczów',
+  h2h_matrix:          'H2H Matrix',
+  scoreline_stats:     'Wyniki meczów',
+  title_relegation:    'Awans/Play-off',
+  points_pace:         'Projekcja sezonu',
   positions_over_time: 'Pozycje w czasie',
 }
 
@@ -80,6 +80,14 @@ const WIDGET_ICONS: Record<WidgetId, string> = {
 const STORAGE_KEY = 'bytom-dashboard-layout-v3'
 const HIDDEN_KEY  = 'bytom-dashboard-hidden-v3'
 
+// Mobile widget order (most important first)
+const MOBILE_WIDGET_ORDER: WidgetId[] = [
+  'standings', 'results', 'form', 'positions_over_time',
+  'form_table', 'elo', 'title_relegation', 'points_pace',
+  'pythagorean', 'home_away', 'goals_trend', 'clean_sheets',
+  'streaks', 'h2h_matrix', 'scoreline_stats', 'league_stats',
+]
+
 function loadLayout(): Layout[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') ?? DEFAULT_LAYOUT }
   catch { return DEFAULT_LAYOUT }
@@ -90,10 +98,18 @@ function loadHidden(): Set<WidgetId> {
 }
 
 export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
-  const [layout, setLayout]     = useState<Layout[]>(loadLayout)
-  const [hidden, setHidden]     = useState<Set<WidgetId>>(loadHidden)
-  const [showPanel, setPanel]   = useState(false)
-  const [containerWidth, setW]  = useState(1280)
+  const [layout, setLayout]         = useState<Layout[]>(loadLayout)
+  const [hidden, setHidden]         = useState<Set<WidgetId>>(loadHidden)
+  const [showPanel, setPanel]       = useState(false)
+  const [containerWidth, setW]      = useState(1280)
+  const [isMobile, setIsMobile]     = useState(() => window.innerWidth < 768)
+  const [mobileWidget, setMobileWidget] = useState<WidgetId | null>(null)
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
@@ -125,7 +141,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
   const teams = data.advanced_teams?.length ? data.advanced_teams : []
 
   const renderWidget = (id: WidgetId) => {
-    if (hidden.has(id)) return null
+    if (!isMobile && hidden.has(id)) return null
     switch (id) {
       case 'standings':    return <StandingsWidget teams={teams} />
       case 'pythagorean':  return <PythagoreanWidget teams={teams} />
@@ -147,8 +163,6 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
     }
   }
 
-  const visibleLayout = layout.filter(l => !hidden.has(l.i as WidgetId))
-
   const lg = data.league
   const statBar = lg ? [
     { label: 'Mecze',        value: lg.total_matches,          color: 'text-white' },
@@ -160,6 +174,195 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
     { label: 'Remisy',       value: `${lg.draw_pct}%`,          color: 'text-accent-yellow' },
     { label: 'Wygr. gości', value: `${lg.away_win_pct}%`,      color: 'text-accent-red' },
   ] : []
+
+  // ── MOBILE VIEW ──────────────────────────────────────────────────────────
+  if (isMobile) {
+
+    // Full-screen single widget view
+    if (mobileWidget) {
+      const widget = renderWidget(mobileWidget)
+      return (
+        <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+          {/* Widget header */}
+          <header style={{
+            background: 'linear-gradient(180deg, #0a1628 0%, #0c1e32 100%)',
+            borderBottom: '1px solid rgba(74,222,128,0.2)',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 50,
+          }}>
+            <button
+              onClick={() => setMobileWidget(null)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                color: '#4ade80', fontSize: '14px', fontWeight: 600,
+                padding: '6px 10px', borderRadius: '8px',
+                background: 'rgba(74,222,128,0.1)',
+                border: '1px solid rgba(74,222,128,0.25)',
+              }}
+            >
+              <ArrowLeft size={16} />
+              Wróć
+            </button>
+            <span style={{ color: '#f8fafc', fontWeight: 600, fontSize: '15px' }}>
+              {WIDGET_ICONS[mobileWidget]}&nbsp;{WIDGET_LABELS[mobileWidget]}
+            </span>
+          </header>
+
+          <div style={{ padding: '12px' }}>
+            {widget
+              ? widget
+              : <p style={{ color: '#94a3b8', textAlign: 'center', paddingTop: '3rem', fontSize: '14px' }}>
+                  Brak danych dla tego widgetu
+                </p>
+            }
+          </div>
+
+          <footer style={{ textAlign: 'center', padding: '16px', fontSize: '11px', color: '#334155' }}>
+            Dane: regionalnyfutbol.pl · 90minut.pl
+          </footer>
+        </div>
+      )
+    }
+
+    // Mobile home — widget card list
+    const isAvailable = (id: WidgetId): boolean => {
+      switch (id) {
+        case 'league_stats':        return !!data.league
+        case 'elo':                 return !!(data.elo?.length)
+        case 'form_table':          return !!(data.form_table?.length)
+        case 'h2h_matrix':          return !!(data.h2h_matrix?.teams.length)
+        case 'scoreline_stats':     return !!data.scoreline_stats
+        case 'title_relegation':    return !!(data.title_relegation?.length)
+        case 'points_pace':         return !!(data.title_relegation?.length)
+        case 'positions_over_time': return !!(data.positions_over_time?.rounds.length)
+        default:                    return teams.length > 0
+      }
+    }
+
+    return (
+      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+
+        {/* Mobile header */}
+        <header style={{
+          background: 'linear-gradient(180deg, #0a1628 0%, #0c1e32 100%)',
+          borderBottom: '1px solid rgba(74,222,128,0.2)',
+          boxShadow: '0 4px 30px rgba(0,0,0,0.5)',
+          padding: '12px 16px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%', fontSize: '20px',
+                background: 'linear-gradient(135deg, #16a34a, #4ade80)',
+                boxShadow: '0 0 16px rgba(74,222,128,0.4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>⚽</div>
+              <div>
+                <h1 style={{ color: '#f8fafc', fontWeight: 700, fontSize: '15px', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>
+                  B-KLASA BYTOM
+                </h1>
+                <p style={{ color: 'rgba(148,163,184,0.8)', fontSize: '11px' }}>
+                  Sezon 2025/2026 · {teams.length} drużyn
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              style={{
+                background: 'linear-gradient(135deg, #16a34a, #4ade80)',
+                color: '#0f172a', padding: '7px 12px', borderRadius: '8px',
+                fontSize: '12px', fontWeight: 700,
+                display: 'flex', alignItems: 'center', gap: '5px',
+                opacity: isRefreshing ? 0.6 : 1,
+              }}
+            >
+              <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+              {isRefreshing ? '...' : 'Odśwież'}
+            </button>
+          </div>
+
+          {/* Stats scrollbar */}
+          {statBar.length > 0 && (
+            <div style={{
+              marginTop: '10px',
+              display: 'flex', gap: '14px',
+              overflowX: 'auto', paddingBottom: '2px',
+              borderTop: '1px solid rgba(45,74,99,0.5)',
+              paddingTop: '8px',
+            }}>
+              {statBar.map(s => (
+                <div key={s.label} className="shrink-0 flex items-center gap-1" style={{ fontSize: '11px' }}>
+                  <span style={{ color: '#64748b' }}>{s.label}:</span>
+                  <span className={`font-bold ${s.color}`}>{s.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </header>
+
+        {/* Widget cards grid */}
+        <div style={{
+          padding: '14px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '10px',
+        }}>
+          {MOBILE_WIDGET_ORDER.map(id => {
+            const available = isAvailable(id)
+            return (
+              <button
+                key={id}
+                onClick={() => available && setMobileWidget(id)}
+                style={{
+                  background: available
+                    ? 'linear-gradient(135deg, rgba(22,32,50,0.95), rgba(12,30,50,0.9))'
+                    : 'rgba(15,23,42,0.5)',
+                  border: `1px solid ${available ? 'rgba(74,222,128,0.2)' : 'rgba(45,74,99,0.25)'}`,
+                  borderRadius: '14px',
+                  padding: '16px 10px',
+                  textAlign: 'center',
+                  cursor: available ? 'pointer' : 'default',
+                  opacity: available ? 1 : 0.45,
+                  transition: 'transform 0.1s, box-shadow 0.1s',
+                  boxShadow: available ? '0 2px 12px rgba(0,0,0,0.3)' : 'none',
+                }}
+                onTouchStart={e => available && ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.96)')}
+                onTouchEnd={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)')}
+              >
+                <div style={{ fontSize: '30px', marginBottom: '7px', lineHeight: 1 }}>
+                  {WIDGET_ICONS[id]}
+                </div>
+                <div style={{
+                  color: available ? '#e2e8f0' : '#475569',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  lineHeight: 1.3,
+                }}>
+                  {WIDGET_LABELS[id]}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <footer style={{ textAlign: 'center', padding: '16px 16px 28px', fontSize: '11px', color: '#334155' }}>
+          Dane: regionalnyfutbol.pl · 90minut.pl · Odświeżanie co 15 min
+        </footer>
+      </div>
+    )
+  }
+
+  // ── DESKTOP VIEW ─────────────────────────────────────────────────────────
+  const visibleLayout = layout.filter(l => !hidden.has(l.i as WidgetId))
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
