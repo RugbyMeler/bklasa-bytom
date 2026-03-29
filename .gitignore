@@ -41,3 +41,6 @@ desktop.ini
 # Cache files from LNP scraper
 backend/scrapers/lnp_cache/
 *.json.cache
+
+# Round summary disk cache (regenerated automatically, no need to commit)
+backend/round_summary_cache.json

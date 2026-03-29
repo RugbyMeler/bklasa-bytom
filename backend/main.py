@@ -3,9 +3,12 @@ FastAPI backend for B-klasa Bytom Football Dashboard.
 Aggregates data from 90minut.pl and regionalnyfutbol.pl.
 """
 
+import json
+import os
 import re
 import time
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -58,7 +61,30 @@ CACHE_TTL = 900  # 15 minutes
 
 # Round-summary cache: keyed by round number so it never expires
 # unless new round data arrives (different round key = new generation).
-_summary_by_round: dict[int, dict] = {}
+# Also persisted to disk so server restarts don't waste API quota.
+_SUMMARY_CACHE_FILE = Path(__file__).parent / "round_summary_cache.json"
+
+def _load_summary_cache() -> dict[int, dict]:
+    """Load persisted round summaries from disk on startup."""
+    try:
+        if _SUMMARY_CACHE_FILE.exists():
+            raw = json.loads(_SUMMARY_CACHE_FILE.read_text(encoding="utf-8"))
+            return {int(k): v for k, v in raw.items()}
+    except Exception as exc:
+        print(f"[summary_cache] Failed to load cache from disk: {exc}")
+    return {}
+
+def _save_summary_cache(cache: dict[int, dict]) -> None:
+    """Persist round summaries to disk."""
+    try:
+        _SUMMARY_CACHE_FILE.write_text(
+            json.dumps({str(k): v for k, v in cache.items()}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        print(f"[summary_cache] Failed to save cache to disk: {exc}")
+
+_summary_by_round: dict[int, dict] = _load_summary_cache()
 
 # Teams that have withdrawn from the competition this season.
 # Their results are annulled and they are excluded from all stats.
@@ -333,6 +359,7 @@ def _get_round_summary(standings, results, schedule, advanced, form_table) -> di
     summary = generate_round_summary(standings, results, advanced, form_table)
     if summary and summary.get("round") and not summary.get("error"):
         _summary_by_round[summary["round"]] = summary
+        _save_summary_cache(_summary_by_round)
         return summary
 
     return summary or {"round": target_round, "text": None, "error": "generation failed"}

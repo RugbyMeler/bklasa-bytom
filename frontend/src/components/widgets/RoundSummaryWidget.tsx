@@ -1,42 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Sparkles, AlertCircle, Newspaper } from 'lucide-react'
+import { Sparkles, Newspaper, Clock } from 'lucide-react'
 import type { RoundSummary } from '../../types'
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api'
-
 interface Props {
-  initial?: RoundSummary | null
+  summary?: RoundSummary | null
 }
 
-export function RoundSummaryWidget({ initial }: Props) {
-  const [summary, setSummary]     = useState<RoundSummary | null>(initial ?? null)
-  const [loading, setLoading]     = useState(false)
-  const [fetchError, setFetchErr] = useState<string | null>(null)
-
-  const fetchSummary = useCallback(async () => {
-    setLoading(true)
-    setFetchErr(null)
-    try {
-      const res = await fetch(`${API_BASE}/round-summary`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: RoundSummary = await res.json()
-      setSummary(data)
-    } catch (err) {
-      setFetchErr(err instanceof Error ? err.message : 'Błąd połączenia')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Auto-fetch on mount if no cached text available
-  useEffect(() => {
-    if (!initial?.text) {
-      fetchSummary()
-    }
-  }, [initial, fetchSummary])
-
+export function RoundSummaryWidget({ summary }: Props) {
   const paragraphs = summary?.text
     ? summary.text.split(/\n+/).map(p => p.trim()).filter(Boolean)
     : []
@@ -67,44 +36,17 @@ export function RoundSummaryWidget({ initial }: Props) {
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
 
-        {/* Loading */}
-        {loading && !summary?.text && (
-          <div className="flex flex-col items-center justify-center gap-4 py-10">
-            <Sparkles size={28} style={{ color: '#4ade80', opacity: 0.6 }} className="animate-pulse" />
+        {/* Not yet generated — round still in progress */}
+        {!summary?.text && (
+          <div className="flex flex-col items-center justify-center gap-3 py-10">
+            <Clock size={26} style={{ color: '#334155' }} />
             <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: '#94a3b8' }}>
-                Gemini analizuje ligę…
+              <p className="text-sm font-medium" style={{ color: '#64748b' }}>
+                Podsumowanie pojawi się automatycznie
               </p>
-              <p className="text-xs mt-1" style={{ color: '#475569' }}>
-                Może to potrwać kilka sekund
+              <p className="text-xs mt-1" style={{ color: '#334155' }}>
+                po zakończeniu wszystkich meczów kolejki
               </p>
-            </div>
-          </div>
-        )}
-
-        {/* Error */}
-        {!loading && (fetchError || summary?.error) && !summary?.text && (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <AlertCircle size={24} style={{ color: '#f87171' }} />
-            <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: '#f87171' }}>
-                Nie udało się wygenerować podsumowania
-              </p>
-              <p className="text-xs mt-1" style={{ color: '#64748b' }}>
-                {fetchError ?? summary?.error}
-              </p>
-              {summary?.error === 'no completed round found' && (
-                <p className="text-xs mt-2 px-3 py-2 rounded-lg"
-                   style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
-                  Podsumowanie pojawi się automatycznie po zakończeniu kolejki.
-                </p>
-              )}
-              {summary?.error === 'GOOGLE_API_KEY not set' && (
-                <p className="text-xs mt-2 px-3 py-2 rounded-lg"
-                   style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
-                  Ustaw zmienną <code>GOOGLE_API_KEY</code> na Render.
-                </p>
-              )}
             </div>
           </div>
         )}

@@ -166,7 +166,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
       case 'title_relegation': return data.title_relegation?.length ? <TitleRelegationWidget data={data.title_relegation} /> : null
       case 'points_pace':         return data.title_relegation?.length ? <PointsPaceWidget data={data.title_relegation} /> : null
       case 'positions_over_time': return data.positions_over_time?.rounds.length ? <PositionsWidget data={data.positions_over_time} /> : null
-      case 'round_summary':       return <RoundSummaryWidget initial={data.round_summary} />
+      case 'round_summary':       return <RoundSummaryWidget summary={data.round_summary} />
       case 'upcoming_matches':    return <UpcomingMatchesWidget schedule={data.schedule ?? []} teams={teams.map(t => t.name)} />
       default: return null
     }
