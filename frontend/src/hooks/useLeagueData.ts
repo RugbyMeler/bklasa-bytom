@@ -11,14 +11,14 @@ async function fetchAll(): Promise<DashboardData> {
   return data
 }
 
-const EIGHT_HOURS = 1000 * 60 * 60 * 8
+const FIFTEEN_MIN = 1000 * 60 * 15
 
 export function useLeagueData() {
   return useQuery({
     queryKey: ['league-data'],
     queryFn: fetchAll,
-    staleTime: EIGHT_HOURS,
-    refetchInterval: EIGHT_HOURS,
+    staleTime: FIFTEEN_MIN,
+    refetchInterval: FIFTEEN_MIN,
     refetchIntervalInBackground: false, // only refetch when tab is active
     retry: 2,
   })
