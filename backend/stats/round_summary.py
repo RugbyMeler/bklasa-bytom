@@ -18,8 +18,11 @@ try:
     from google import genai
     from google.genai import types as genai_types
     _GEMINI_AVAILABLE = True
-except ImportError:
+except ImportError as _import_err:
     _GEMINI_AVAILABLE = False
+    _IMPORT_ERROR = str(_import_err)
+else:
+    _IMPORT_ERROR = None
 
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
@@ -195,7 +198,7 @@ def generate_round_summary(
     Returns error dict if API key missing or call fails.
     """
     if not _GEMINI_AVAILABLE:
-        return {"error": "google-generativeai package not installed", "round": None, "text": None}
+        return {"error": f"google-genai import failed: {_IMPORT_ERROR}", "round": None, "text": None}
 
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
@@ -223,7 +226,7 @@ def generate_round_summary(
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 max_output_tokens=700,
@@ -234,7 +237,7 @@ def generate_round_summary(
         return {
             "round": latest_round,
             "text": text,
-            "model": "Gemini 2.0 Flash",
+            "model": "Gemini 2.5 Flash",
             "error": None,
         }
     except Exception as exc:
