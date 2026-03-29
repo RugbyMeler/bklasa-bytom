@@ -115,7 +115,7 @@ def _season_records(results: list[dict]) -> str:
         total = best.get("home_goals", 0) + best.get("away_goals", 0)
         rnd = best.get("round", "?")
         lines.append(
-            f"  Najbardziej bramkostrzelny mecz sezonu (runda {rnd}): "
+            f"  Najbardziej bramkostrzelny mecz sezonu (kolejka {rnd}): "
             f"{best.get('home_team','')} {best.get('home_goals','')}–{best.get('away_goals','')} {best.get('away_team','')}  ({total} goli)"
         )
     biggest = max(
@@ -127,7 +127,7 @@ def _season_records(results: list[dict]) -> str:
         diff = abs(biggest.get("home_goals", 0) - biggest.get("away_goals", 0))
         rnd = biggest.get("round", "?")
         lines.append(
-            f"  Największa różnica goli sezonu (runda {rnd}): "
+            f"  Największa różnica goli sezonu (kolejka {rnd}): "
             f"{biggest.get('home_team','')} {biggest.get('home_goals','')}–{biggest.get('away_goals','')} {biggest.get('away_team','')}  ({diff:+d})"
         )
     return "\n".join(lines) if lines else "  (brak danych)"
@@ -136,20 +136,20 @@ def _season_records(results: list[dict]) -> str:
 def _build_prompt(standings, results, advanced_teams, form_table, latest_round, prev_text) -> str:
     return f"""Jesteś redaktorem sportowym specjalizującym się w piłce nożnej. Piszesz dla serwisu śledzącego B-klasę Bytom (sezon 2025/2026, Śląski ZPN, Polska).
 
-Masz do dyspozycji dane z rundy {latest_round} oraz kontekst z poprzednich rund. Napisz angażujące podsumowanie po polsku.
+Masz do dyspozycji dane z kolejki {latest_round} oraz kontekst z poprzednich kolejek. Napisz angażujące podsumowanie po polsku.
 
 ══════════════════════════════════════════
-WYNIKI RUNDY {latest_round}
+WYNIKI KOLEJKI {latest_round}
 ══════════════════════════════════════════
 {_fmt_results([r for r in results if (r.get("round") or 0) == latest_round])}
 
 ══════════════════════════════════════════
-POPRZEDNIE RUNDY (kontekst)
+POPRZEDNIE KOLEJKI (kontekst)
 ══════════════════════════════════════════
 {prev_text}
 
 ══════════════════════════════════════════
-TABELA PO RUNDZIE {latest_round}
+TABELA PO KOLEJCE {latest_round}
 ══════════════════════════════════════════
 {_fmt_standings(standings)}
 (Awans bezpośredni: miejsca 1–2 | Play-offy: miejsca 3–6)
@@ -174,12 +174,12 @@ ZADANIE
 ══════════════════════════════════════════
 Napisz podsumowanie kolejki {latest_round} (ok. 220–280 słów) w stylu dziennikarza sportowego. Wymagania:
 
-1. Zacznij od uderzającego leadu — najważniejszy lub najbardziej zaskakujący wynik rundy.
+1. Zacznij od uderzającego leadu — najważniejszy lub najbardziej zaskakujący wynik kolejki.
 2. Omów walkę o czołowe miejsca — lider tabeli, pretendenci, różnice punktowe.
 3. Wyróżnij drużyny w świetnej formie i wspomnij o bieżących seriach.
 4. Zwróć uwagę na drużyny w kryzysie (seria porażek, słaba forma).
-5. Jeśli w tej rundzie padł rekord (bramkostrzelny mecz, wysoka wygrana), odnotuj go.
-6. Zakończ krótką zapowiedzią walki w kolejnych rundach lub kluczowymi potyczkami.
+5. Jeśli w tej kolejce padł rekord (bramkostrzelny mecz, wysoka wygrana), odnotuj go.
+6. Zakończ krótką zapowiedzią walki w następnych kolejkach lub kluczowymi potyczkami.
 
 Styl: płynna proza, emocjonalny język, bez używania markdown (żadnych **, ## ani list punktorowanych). Pisz jak artykuł prasowy — ciągłym tekstem."""
 
@@ -218,7 +218,7 @@ def generate_round_summary(
 
     prev_text_parts = []
     for rnd in sorted(prev_rounds.keys(), reverse=True):
-        prev_text_parts.append(f"Runda {rnd}:\n{_fmt_results(prev_rounds[rnd])}")
+        prev_text_parts.append(f"Kolejka {rnd}:\n{_fmt_results(prev_rounds[rnd])}")
     prev_text = "\n\n".join(prev_text_parts) if prev_text_parts else "  (brak danych)"
 
     prompt = _build_prompt(standings, results, advanced_teams, form_table, latest_round, prev_text)
