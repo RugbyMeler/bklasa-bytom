@@ -155,6 +155,13 @@ export interface PositionsOverTime {
   rounds: { round: number; positions: Record<string, number> }[]
 }
 
+export interface RoundSummary {
+  round: number | null
+  text: string | null
+  model?: string
+  error?: string | null
+}
+
 export interface DashboardData {
   standings: TeamStanding[]
   advanced_teams: AdvancedTeamStats[]
@@ -167,6 +174,7 @@ export interface DashboardData {
   h2h_matrix?: H2HMatrix
   title_relegation?: TitleRelegationEntry[]
   positions_over_time?: PositionsOverTime
+  round_summary?: RoundSummary | null
 }
 
 export type WidgetId =
@@ -187,3 +195,4 @@ export type WidgetId =
   | 'title_relegation'
   | 'points_pace'
   | 'positions_over_time'
+  | 'round_summary'

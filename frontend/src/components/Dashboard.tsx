@@ -19,6 +19,7 @@ import { ScorelineWidget }       from './widgets/ScorelineWidget'
 import { TitleRelegationWidget } from './widgets/TitleRelegationWidget'
 import { PointsPaceWidget }      from './widgets/PointsPaceWidget'
 import { PositionsWidget }       from './widgets/PositionsWidget'
+import { RoundSummaryWidget }    from './widgets/RoundSummaryWidget'
 
 import type { DashboardData, WidgetId } from '../types'
 import { ArrowLeft, Eye, EyeOff, RotateCcw, RefreshCw, Settings } from 'lucide-react'
@@ -30,25 +31,27 @@ interface Props {
 }
 
 const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'standings',           x: 0, y: 0,   w: 8,  h: 11 },
-  { i: 'league_stats',        x: 8, y: 0,   w: 4,  h: 11 },
-  { i: 'pythagorean',         x: 0, y: 11,  w: 6,  h: 14 },
-  { i: 'form',                x: 6, y: 11,  w: 6,  h: 14 },
-  { i: 'results',             x: 0, y: 25,  w: 6,  h: 12 },
-  { i: 'home_away',           x: 6, y: 25,  w: 6,  h: 12 },
-  { i: 'positions_over_time', x: 0, y: 37,  w: 12, h: 18 },
-  { i: 'goals_trend',         x: 0, y: 55,  w: 6,  h: 15 },
-  { i: 'clean_sheets',        x: 6, y: 55,  w: 6,  h: 15 },
-  { i: 'streaks',             x: 0, y: 70,  w: 12, h: 10 },
-  { i: 'elo',                 x: 0, y: 80,  w: 6,  h: 20 },
-  { i: 'form_table',          x: 6, y: 80,  w: 6,  h: 14 },
-  { i: 'title_relegation',    x: 0, y: 100, w: 7,  h: 16 },
-  { i: 'points_pace',         x: 7, y: 100, w: 5,  h: 16 },
-  { i: 'h2h_matrix',          x: 0, y: 116, w: 12, h: 20 },
-  { i: 'scoreline_stats',     x: 0, y: 136, w: 6,  h: 18 },
+  { i: 'round_summary',       x: 0, y: 0,   w: 12, h: 14 },
+  { i: 'standings',           x: 0, y: 14,  w: 8,  h: 11 },
+  { i: 'league_stats',        x: 8, y: 14,  w: 4,  h: 11 },
+  { i: 'pythagorean',         x: 0, y: 25,  w: 6,  h: 14 },
+  { i: 'form',                x: 6, y: 25,  w: 6,  h: 14 },
+  { i: 'results',             x: 0, y: 39,  w: 6,  h: 12 },
+  { i: 'home_away',           x: 6, y: 39,  w: 6,  h: 12 },
+  { i: 'positions_over_time', x: 0, y: 51,  w: 12, h: 18 },
+  { i: 'goals_trend',         x: 0, y: 69,  w: 6,  h: 15 },
+  { i: 'clean_sheets',        x: 6, y: 69,  w: 6,  h: 15 },
+  { i: 'streaks',             x: 0, y: 84,  w: 12, h: 10 },
+  { i: 'elo',                 x: 0, y: 94,  w: 6,  h: 20 },
+  { i: 'form_table',          x: 6, y: 94,  w: 6,  h: 14 },
+  { i: 'title_relegation',    x: 0, y: 114, w: 7,  h: 16 },
+  { i: 'points_pace',         x: 7, y: 114, w: 5,  h: 16 },
+  { i: 'h2h_matrix',          x: 0, y: 130, w: 12, h: 20 },
+  { i: 'scoreline_stats',     x: 0, y: 150, w: 6,  h: 18 },
 ]
 
 const WIDGET_LABELS: Record<WidgetId, string> = {
+  round_summary:       'Podsumowanie rundy',
   standings:           'Tabela',
   pythagorean:         'Pitagoras',
   form:                'Forma',
@@ -69,7 +72,7 @@ const WIDGET_LABELS: Record<WidgetId, string> = {
 }
 
 const WIDGET_ICONS: Record<WidgetId, string> = {
-  standings: '🏆', pythagorean: '📐', form: '📈',
+  round_summary: '📰', standings: '🏆', pythagorean: '📐', form: '📈',
   results: '📅', league_stats: '📊', home_away: '🏟️', goals_trend: '📉',
   clean_sheets: '🛡️', streaks: '🔥', schedule: '🗓️',
   elo: '⚡', form_table: '🔥', h2h_matrix: '⚔️',
@@ -77,12 +80,12 @@ const WIDGET_ICONS: Record<WidgetId, string> = {
   positions_over_time: '📉',
 }
 
-const STORAGE_KEY = 'bytom-dashboard-layout-v3'
-const HIDDEN_KEY  = 'bytom-dashboard-hidden-v3'
+const STORAGE_KEY = 'bytom-dashboard-layout-v4'
+const HIDDEN_KEY  = 'bytom-dashboard-hidden-v4'
 
 // Mobile widget order (most important first)
 const MOBILE_WIDGET_ORDER: WidgetId[] = [
-  'standings', 'results', 'form', 'positions_over_time',
+  'round_summary', 'standings', 'results', 'form', 'positions_over_time',
   'form_table', 'elo', 'title_relegation', 'points_pace',
   'pythagorean', 'home_away', 'goals_trend', 'clean_sheets',
   'streaks', 'h2h_matrix', 'scoreline_stats', 'league_stats',
@@ -159,6 +162,7 @@ export function Dashboard({ data, onRefresh, isRefreshing }: Props) {
       case 'title_relegation': return data.title_relegation?.length ? <TitleRelegationWidget data={data.title_relegation} /> : null
       case 'points_pace':         return data.title_relegation?.length ? <PointsPaceWidget data={data.title_relegation} /> : null
       case 'positions_over_time': return data.positions_over_time?.rounds.length ? <PositionsWidget data={data.positions_over_time} /> : null
+      case 'round_summary':       return <RoundSummaryWidget initial={data.round_summary} />
       default: return null
     }
   }

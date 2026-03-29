@@ -38,6 +38,7 @@ from stats.advanced import (
     compute_title_relegation,
     compute_positions_over_time,
 )
+from stats.round_summary import generate_round_summary
 
 app = FastAPI(title="B-klasa Bytom API", version="1.0.0")
 
@@ -51,6 +52,10 @@ app.add_middleware(
 # Simple in-memory cache with TTL
 _cache: dict[str, tuple[Any, float]] = {}
 CACHE_TTL = 900  # 15 minutes
+
+# Round-summary cache: keyed by round number so it never expires
+# unless new round data arrives (different round key = new generation).
+_summary_by_round: dict[int, dict] = {}
 
 # Teams that have withdrawn from the competition this season.
 # Their results are annulled and they are excluded from all stats.
@@ -295,6 +300,27 @@ def refresh_cache():
     return {"status": "cache cleared"}
 
 
+def _get_round_summary(standings, results, advanced, form_table, force: bool = False) -> dict:
+    """Return cached round summary or generate a new one via Claude API."""
+    latest_round = max((r.get("round") or 0 for r in results), default=0)
+    if latest_round and not force and latest_round in _summary_by_round:
+        return _summary_by_round[latest_round]
+    summary = generate_round_summary(standings, results, advanced, form_table)
+    if summary and summary.get("round") and not summary.get("error"):
+        _summary_by_round[summary["round"]] = summary
+    return summary or {"round": latest_round, "text": None, "error": "generation failed"}
+
+
+@app.get("/api/round-summary")
+def get_round_summary(force: bool = False):
+    """Return AI-generated summary of the latest round (cached per round number)."""
+    standings, results = _get_clean_data()
+    advanced = compute_all_advanced_stats(standings, results) if standings else []
+    form_table = compute_form_table(results, last_n=5)
+    summary = _get_round_summary(standings, results, advanced, form_table, force=force)
+    return summary
+
+
 def _get_clean_data() -> tuple[list[dict], list[dict]]:
     """Return standings and results with withdrawn teams removed."""
     standings = _cached("standings_rf", fetch_standings_rf) or _cached("standings_90", fetch_standings_90)
@@ -353,6 +379,10 @@ def get_all():
 
     positions_over_time = compute_positions_over_time(results)
 
+    # Include round summary only if already cached (avoid blocking the main response)
+    latest_round = max((r.get("round") or 0 for r in results), default=0)
+    round_summary = _summary_by_round.get(latest_round)
+
     return {
         "standings": standings,
         "advanced_teams": advanced,
@@ -365,6 +395,7 @@ def get_all():
         "h2h_matrix": h2h,
         "title_relegation": title_relegation,
         "positions_over_time": positions_over_time,
+        "round_summary": round_summary,
     }
 
 
