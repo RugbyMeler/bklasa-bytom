@@ -1,9 +1,15 @@
 import { useState, useMemo } from 'react'
 import { CalendarDays, MapPin, Home, Plane } from 'lucide-react'
-import type { MatchResult } from '../../types'
+interface Fixture {
+  round?: number | null
+  date?: string
+  time?: string
+  home_team: string
+  away_team: string
+}
 
 interface Props {
-  schedule: MatchResult[]
+  schedule: Fixture[]
   teams: string[]
 }
 

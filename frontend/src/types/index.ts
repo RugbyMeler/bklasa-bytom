@@ -63,8 +63,8 @@ export interface MatchResult {
   time?: string
   home_team: string
   away_team: string
-  home_goals?: number
-  away_goals?: number
+  home_goals: number
+  away_goals: number
   source?: string
 }
 
