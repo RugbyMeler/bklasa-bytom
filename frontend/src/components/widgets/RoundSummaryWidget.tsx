@@ -109,10 +109,11 @@ export function RoundSummaryWidget({ initial }: Props) {
               <p className="text-xs mt-1" style={{ color: '#64748b' }}>
                 {fetchError ?? summary?.error ?? 'Nieznany błąd'}
               </p>
-              {(summary?.error === 'ANTHROPIC_API_KEY not set') && (
+              {(summary?.error === 'GOOGLE_API_KEY not set') && (
                 <p className="text-xs mt-2 px-3 py-2 rounded-lg"
                    style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
-                  Ustaw zmienną środowiskową <code>ANTHROPIC_API_KEY</code> na Render.
+                  Ustaw zmienną środowiskową <code>GOOGLE_API_KEY</code> na Render.
+                  Klucz API jest bezpłatny: aistudio.google.com/apikey
                 </p>
               )}
             </div>

@@ -1,16 +1,23 @@
 """
-AI-generated round summary using Claude API.
+AI-generated round summary using Google Gemini API (free tier).
 Generates a Polish sports-journalist summary of the latest round.
+
+Free tier limits (as of 2025): 1500 requests/day, 15 RPM — more than
+enough since the summary is cached per round number and only regenerated
+when new round data arrives.
+
+Get a free API key at: https://aistudio.google.com/apikey
+Set env var: GOOGLE_API_KEY=<your key>
 """
 
 import os
 from typing import Optional
 
 try:
-    import anthropic
-    _ANTHROPIC_AVAILABLE = True
+    import google.generativeai as genai
+    _GEMINI_AVAILABLE = True
 except ImportError:
-    _ANTHROPIC_AVAILABLE = False
+    _GEMINI_AVAILABLE = False
 
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
@@ -69,7 +76,7 @@ def _fmt_streaks(advanced_teams: list[dict]) -> str:
     if win_s and win_s[0][1] >= 3:
         top = [f"{n} ({s} meczów)" for n, s in win_s[:4] if s >= 3]
         if top:
-            lines.append(f"  Serie zwycięstw (≥3):  {',  '.join(top)}")
+            lines.append(f"  Serie zwycięstw (≥3):   {',  '.join(top)}")
 
     unb_s = sorted(
         [(t.get("name", ""), t.get("unbeaten_streak", 0)) for t in advanced_teams],
@@ -98,7 +105,6 @@ def _season_records(results: list[dict]) -> str:
     if not results:
         return "  (brak danych)"
     lines = []
-    # Highest-scoring game
     best = max(results, key=lambda r: r.get("home_goals", 0) + r.get("away_goals", 0), default=None)
     if best:
         total = best.get("home_goals", 0) + best.get("away_goals", 0)
@@ -107,7 +113,6 @@ def _season_records(results: list[dict]) -> str:
             f"  Najbardziej bramkostrzelny mecz sezonu (runda {rnd}): "
             f"{best.get('home_team','')} {best.get('home_goals','')}–{best.get('away_goals','')} {best.get('away_team','')}  ({total} goli)"
         )
-    # Biggest win
     biggest = max(
         results,
         key=lambda r: abs(r.get("home_goals", 0) - r.get("away_goals", 0)),
@@ -123,55 +128,15 @@ def _season_records(results: list[dict]) -> str:
     return "\n".join(lines) if lines else "  (brak danych)"
 
 
-# ── Main generation function ──────────────────────────────────────────────────
-
-def generate_round_summary(
-    standings: list[dict],
-    results: list[dict],
-    advanced_teams: list[dict],
-    form_table: list[dict],
-) -> Optional[dict]:
-    """
-    Use Claude API to generate a Polish sports-journalist summary of the latest round.
-    Returns dict with keys: round, text, model.
-    Returns None if API is unavailable or key missing.
-    """
-    if not _ANTHROPIC_AVAILABLE:
-        return {"error": "anthropic package not installed", "round": None, "text": None}
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return {"error": "ANTHROPIC_API_KEY not set", "round": None, "text": None}
-
-    if not results:
-        return {"error": "no results data", "round": None, "text": None}
-
-    # Determine latest round
-    latest_round = max((r.get("round") or 0 for r in results), default=0)
-    if latest_round == 0:
-        return {"error": "round numbers missing", "round": None, "text": None}
-
-    latest_results = [r for r in results if (r.get("round") or 0) == latest_round]
-
-    # Previous 4 rounds for context
-    prev_rounds: dict[int, list[dict]] = {}
-    for rnd in range(max(1, latest_round - 4), latest_round):
-        prev_rounds[rnd] = [r for r in results if (r.get("round") or 0) == rnd]
-
-    prev_text_parts = []
-    for rnd in sorted(prev_rounds.keys(), reverse=True):
-        prev_text_parts.append(f"Runda {rnd}:\n{_fmt_results(prev_rounds[rnd])}")
-    prev_text = "\n\n".join(prev_text_parts) if prev_text_parts else "  (brak danych)"
-
-    # Build prompt
-    prompt = f"""Jesteś redaktorem sportowym specjalizującym się w piłce nożnej. Piszesz dla serwisu śledzącego B-klasę Bytom (sezon 2025/2026, Śląski ZPN, Polska).
+def _build_prompt(standings, results, advanced_teams, form_table, latest_round, prev_text) -> str:
+    return f"""Jesteś redaktorem sportowym specjalizującym się w piłce nożnej. Piszesz dla serwisu śledzącego B-klasę Bytom (sezon 2025/2026, Śląski ZPN, Polska).
 
 Masz do dyspozycji dane z rundy {latest_round} oraz kontekst z poprzednich rund. Napisz angażujące podsumowanie po polsku.
 
 ══════════════════════════════════════════
 WYNIKI RUNDY {latest_round}
 ══════════════════════════════════════════
-{_fmt_results(latest_results)}
+{_fmt_results([r for r in results if (r.get("round") or 0) == latest_round])}
 
 ══════════════════════════════════════════
 POPRZEDNIE RUNDY (kontekst)
@@ -213,20 +178,63 @@ Napisz podsumowanie rundy {latest_round} (ok. 220–280 słów) w stylu dziennik
 
 Styl: płynna proza, emocjonalny język, bez używania markdown (żadnych **, ## ani list punktorowanych). Pisz jak artykuł prasowy — ciągłym tekstem."""
 
+
+# ── Main generation function ──────────────────────────────────────────────────
+
+def generate_round_summary(
+    standings: list[dict],
+    results: list[dict],
+    advanced_teams: list[dict],
+    form_table: list[dict],
+) -> Optional[dict]:
+    """
+    Use Google Gemini (free tier) to generate a Polish sports summary.
+    Returns dict with keys: round, text, model, error.
+    Returns error dict if API key missing or call fails.
+    """
+    if not _GEMINI_AVAILABLE:
+        return {"error": "google-generativeai package not installed", "round": None, "text": None}
+
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return {"error": "GOOGLE_API_KEY not set", "round": None, "text": None}
+
+    if not results:
+        return {"error": "no results data", "round": None, "text": None}
+
+    latest_round = max((r.get("round") or 0 for r in results), default=0)
+    if latest_round == 0:
+        return {"error": "round numbers missing", "round": None, "text": None}
+
+    # Previous 4 rounds for context
+    prev_rounds: dict[int, list[dict]] = {}
+    for rnd in range(max(1, latest_round - 4), latest_round):
+        prev_rounds[rnd] = [r for r in results if (r.get("round") or 0) == rnd]
+
+    prev_text_parts = []
+    for rnd in sorted(prev_rounds.keys(), reverse=True):
+        prev_text_parts.append(f"Runda {rnd}:\n{_fmt_results(prev_rounds[rnd])}")
+    prev_text = "\n\n".join(prev_text_parts) if prev_text_parts else "  (brak danych)"
+
+    prompt = _build_prompt(standings, results, advanced_teams, form_table, latest_round, prev_text)
+
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=700,
-            messages=[{"role": "user", "content": prompt}],
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=700,
+                temperature=0.8,
+            ),
         )
-        text = message.content[0].text.strip()
+        text = response.text.strip()
         return {
             "round": latest_round,
             "text": text,
-            "model": "claude-3-5-haiku",
+            "model": "Gemini 1.5 Flash",
             "error": None,
         }
     except Exception as exc:
-        print(f"[round_summary] Claude API error: {exc}")
+        print(f"[round_summary] Gemini API error: {exc}")
         return {"error": str(exc), "round": latest_round, "text": None}
