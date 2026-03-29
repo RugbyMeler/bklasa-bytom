@@ -229,8 +229,10 @@ def generate_round_summary(
             model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
-                max_output_tokens=700,
+                max_output_tokens=2048,
                 temperature=0.8,
+                # Disable chain-of-thought thinking so all tokens go to the response
+                thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
             ),
         )
         text = response.text.strip()
