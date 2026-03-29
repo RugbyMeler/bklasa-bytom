@@ -110,8 +110,9 @@ def compute_standings_from_results(results: list[dict]) -> list[dict]:
         ag = r.get("away_goals")
         if not ht or not at or hg is None or ag is None:
             continue
-        if ht in WITHDRAWN_TEAMS or at in WITHDRAWN_TEAMS:
-            continue
+        # Skip withdrawn teams themselves from appearing in the standings,
+        # but their first-half results still count for opponents (already
+        # handled by _filter_results — don't double-filter here).
         for team, gf, ga in [(ht, hg, ag), (at, ag, hg)]:
             s = stats[team]
             s["played"] += 1
@@ -128,6 +129,8 @@ def compute_standings_from_results(results: list[dict]) -> list[dict]:
 
     standings = []
     for name, s in stats.items():
+        if name in WITHDRAWN_TEAMS:
+            continue  # don't include withdrawn teams in the table
         gf, ga = s["gf"], s["ga"]
         standings.append({
             "position": 0,  # filled below
