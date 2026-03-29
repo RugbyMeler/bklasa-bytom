@@ -473,25 +473,27 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Prop
               <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
               {isRefreshing ? 'ODŚWIEŻANIE...' : 'ODŚWIEŻ'}
             </button>
-            <button
-              onClick={() => setPanel(p => !p)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '8px 16px',
-                background: showPanel ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${showPanel ? 'rgba(34,197,94,0.4)' : 'var(--card-bd)'}`,
-                borderRadius: 8,
-                color: showPanel ? 'var(--green)' : 'var(--text-muted)',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                letterSpacing: '0.04em',
-                transition: 'all 0.15s',
-              }}
-            >
-              <Settings size={13} />
-              WIDGETY
-            </button>
+            {activeSection === 'wszystko' && (
+              <button
+                onClick={() => setPanel(p => !p)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px',
+                  background: showPanel ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${showPanel ? 'rgba(34,197,94,0.4)' : 'var(--card-bd)'}`,
+                  borderRadius: 8,
+                  color: showPanel ? 'var(--green)' : 'var(--text-muted)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  letterSpacing: '0.04em',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <Settings size={13} />
+                WIDGETY
+              </button>
+            )}
             <button
               onClick={resetLayout}
               style={{
@@ -514,8 +516,8 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Prop
           </div>
         </div>
 
-        {/* Widget toggle panel */}
-        {showPanel && (
+        {/* Widget toggle panel — only in full dashboard view */}
+        {showPanel && activeSection === 'wszystko' && (
           <div style={{
             marginTop: 16,
             paddingTop: 14,
