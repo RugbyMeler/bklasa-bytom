@@ -42,5 +42,4 @@ desktop.ini
 backend/scrapers/lnp_cache/
 *.json.cache
 
-# Round summary disk cache (regenerated automatically, no need to commit)
-backend/round_summary_cache.json
+# Round summary disk cache — committed to pre-seed production
