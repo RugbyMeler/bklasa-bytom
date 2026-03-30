@@ -1,6 +1,9 @@
 import type { FormTableEntry, FormResult } from '../../types'
 
-interface Props { formTable: FormTableEntry[] }
+interface Props {
+  formTable: FormTableEntry[]
+  onTeamClick?: (name: string) => void
+}
 
 const badgeClass = (r: string) => {
   const base = 'inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold cursor-default'
@@ -9,7 +12,7 @@ const badgeClass = (r: string) => {
   return `${base} bg-red-500/20 text-red-400 border border-red-500/30`
 }
 
-export function FormTableWidget({ formTable }: Props) {
+export function FormTableWidget({ formTable, onTeamClick }: Props) {
   if (!formTable.length) return null
 
   return (
@@ -17,14 +20,14 @@ export function FormTableWidget({ formTable }: Props) {
       <div className="widget-header">
         <div className="flex items-center gap-2">
           <span className="text-accent-green">🔥</span>
-          <span className="font-semibold text-sm text-slate-200">Tabela — ostatnie 5 meczy</span>
+          <span className="font-semibold text-sm text-slate-200">Tabela — ostatnie 5 meczów</span>
         </div>
         <span className="text-xs text-slate-500">mini tabela</span>
       </div>
       <div className="widget-body p-0">
         <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-pitch-500 text-slate-400">
+          <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+            <tr className="border-b border-pitch-500 text-slate-400" style={{ background: 'var(--card-hdr)' }}>
               <th className="px-2 py-2 text-center w-6">#</th>
               <th className="px-2 py-2 text-left">Drużyna</th>
               <th className="px-1 py-2 text-center w-7">M</th>
@@ -40,7 +43,26 @@ export function FormTableWidget({ formTable }: Props) {
             {formTable.map((row, i) => (
               <tr key={row.team} className="border-b border-pitch-600 hover:bg-pitch-600/30">
                 <td className="px-2 py-1.5 text-center text-slate-500">{i + 1}</td>
-                <td className="px-2 py-1.5 text-slate-100 truncate max-w-[120px]">{row.team}</td>
+                <td className="px-2 py-1.5 text-slate-100 truncate max-w-[120px]">
+                  {onTeamClick ? (
+                    <button
+                      className="no-drag"
+                      onClick={() => onTeamClick(row.team)}
+                      style={{
+                        color: '#e8f0ec', background: 'none', border: 'none', padding: 0,
+                        cursor: 'pointer', fontWeight: 400, fontSize: 'inherit',
+                        textDecoration: 'underline', textDecorationColor: 'rgba(34,197,94,0.4)',
+                        textUnderlineOffset: '3px', fontFamily: 'inherit',
+                        maxWidth: '110px', display: 'block', overflow: 'hidden',
+                        textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#4ade80')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#e8f0ec')}
+                    >
+                      {row.team}
+                    </button>
+                  ) : row.team}
+                </td>
                 <td className="px-1 py-1.5 text-center text-slate-400">{row.played}</td>
                 <td className="px-1 py-1.5 text-center text-green-400">{row.won}</td>
                 <td className="px-1 py-1.5 text-center text-yellow-400">{row.drawn}</td>

@@ -4,6 +4,7 @@ import type { AdvancedTeamStats } from '../../types'
 
 interface Props {
   teams: AdvancedTeamStats[]
+  onTeamClick?: (name: string) => void
 }
 
 function FormDots({ form, trend }: { form: ('W' | 'D' | 'L')[]; trend?: { gf: number; ga: number; opponent?: string }[] }) {
@@ -25,7 +26,7 @@ function FormDots({ form, trend }: { form: ('W' | 'D' | 'L')[]; trend?: { gf: nu
   )
 }
 
-export function StandingsWidget({ teams }: Props) {
+export function StandingsWidget({ teams, onTeamClick }: Props) {
   return (
     <div className="widget-card">
       <div className="widget-header">
@@ -38,8 +39,8 @@ export function StandingsWidget({ teams }: Props) {
       <div className="widget-body p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--card-bd)', color: 'var(--text-muted)' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <tr style={{ borderBottom: '1px solid var(--card-bd)', color: 'var(--text-muted)', background: 'var(--card-hdr)' }}>
                 <th className="text-left px-3 py-2 w-6">#</th>
                 <th className="text-left px-3 py-2 min-w-[140px]">Drużyna</th>
                 <th className="px-2 py-2 text-center w-8">M</th>
@@ -75,7 +76,26 @@ export function StandingsWidget({ teams }: Props) {
                     <td className="px-3 py-2">
                       <span className="rank-num">{String(team.position).padStart(2, '0')}</span>
                     </td>
-                    <td className="px-3 py-2 font-medium whitespace-nowrap" style={{ color: '#e8f0ec' }}>{team.name}</td>
+                    <td className="px-3 py-2 font-medium whitespace-nowrap">
+                      {onTeamClick ? (
+                        <button
+                          className="no-drag"
+                          onClick={() => onTeamClick(team.name)}
+                          style={{
+                            color: '#e8f0ec', background: 'none', border: 'none', padding: 0,
+                            cursor: 'pointer', fontWeight: 500, fontSize: 'inherit',
+                            textDecoration: 'underline', textDecorationColor: 'rgba(34,197,94,0.4)',
+                            textUnderlineOffset: '3px', fontFamily: 'inherit',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#4ade80')}
+                          onMouseLeave={e => (e.currentTarget.style.color = '#e8f0ec')}
+                        >
+                          {team.name}
+                        </button>
+                      ) : (
+                        <span style={{ color: '#e8f0ec' }}>{team.name}</span>
+                      )}
+                    </td>
                     <td className="px-2 py-2 text-center" style={{ color: '#b0c8b8' }}>{team.played}</td>
                     <td className="px-2 py-2 text-center" style={{ color: '#22c55e' }}>{team.won}</td>
                     <td className="px-2 py-2 text-center" style={{ color: '#fbbf24' }}>{team.drawn}</td>

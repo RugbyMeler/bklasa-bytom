@@ -32,9 +32,9 @@ export function ScorelineWidget({ stats }: Props) {
       <div className="widget-header">
         <div className="flex items-center gap-2">
           <span className="text-accent-green">🎯</span>
-          <span className="font-semibold text-sm text-slate-200">Wyniki meczy</span>
+          <span className="font-semibold text-sm text-slate-200">Wyniki meczów</span>
         </div>
-        <span className="text-xs text-slate-500">top wyniki · {total_matches} meczy</span>
+        <span className="text-xs text-slate-500">top wyniki · {total_matches} meczów</span>
       </div>
       <div className="widget-body">
 

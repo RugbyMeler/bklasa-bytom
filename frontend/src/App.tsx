@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLeagueData } from './hooks/useLeagueData'
 import { Dashboard } from './components/Dashboard'
+import { TeamPage } from './components/TeamPage'
 import { Sidebar } from './components/Sidebar'
 import axios from 'axios'
 
@@ -56,8 +57,17 @@ export default function App() {
   const queryClient = useQueryClient()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeSection, setActiveSection] = useState('wszystko')
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
   const handleSectionChange = (section: string) => {
     setActiveSection(section)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const handleTeamClick = (name: string) => {
+    setSelectedTeam(name)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const handleTeamBack = () => {
+    setSelectedTeam(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -85,6 +95,17 @@ export default function App() {
   if (error)     return <ErrorScreen error={error as Error} onRetry={() => refetch()} />
   if (!data)     return <Spinner />
 
+  // Team page — full-screen, no sidebar
+  if (selectedTeam) {
+    return (
+      <TeamPage
+        teamName={selectedTeam}
+        data={data}
+        onBack={handleTeamBack}
+      />
+    )
+  }
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {!isMobile && (
@@ -96,6 +117,7 @@ export default function App() {
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
           activeSection={activeSection}
+          onTeamClick={handleTeamClick}
         />
       </div>
     </div>

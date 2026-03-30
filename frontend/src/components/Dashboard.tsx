@@ -30,6 +30,7 @@ interface Props {
   onRefresh: () => void
   isRefreshing: boolean
   activeSection: string
+  onTeamClick: (name: string) => void
 }
 
 const DEFAULT_LAYOUT: Layout[] = [
@@ -117,7 +118,7 @@ function loadHidden(): Set<WidgetId> {
   catch { return new Set() }
 }
 
-export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Props) {
+export function Dashboard({ data, onRefresh, isRefreshing, activeSection, onTeamClick }: Props) {
   const [layout, setLayout]         = useState<Layout[]>(loadLayout)
   const [hidden, setHidden]         = useState<Set<WidgetId>>(loadHidden)
   const [showPanel, setPanel]       = useState(false)
@@ -169,7 +170,7 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Prop
   const renderWidget = (id: WidgetId) => {
     if (!isMobile && hidden.has(id)) return null
     switch (id) {
-      case 'standings':    return <StandingsWidget teams={teams} />
+      case 'standings':    return <StandingsWidget teams={teams} onTeamClick={onTeamClick} />
       case 'pythagorean':  return <PythagoreanWidget teams={teams} />
       case 'form':         return <FormWidget teams={teams} />
       case 'results':      return <ResultsWidget results={data.results ?? []} />
@@ -179,7 +180,7 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection }: Prop
       case 'clean_sheets': return <CleanSheetsWidget teams={teams} />
       case 'streaks':          return <StreaksWidget teams={teams} />
       case 'elo':              return data.elo?.length ? <EloWidget elo={data.elo} /> : null
-      case 'form_table':       return data.form_table?.length ? <FormTableWidget formTable={data.form_table} /> : null
+      case 'form_table':       return data.form_table?.length ? <FormTableWidget formTable={data.form_table} onTeamClick={onTeamClick} /> : null
       case 'h2h_matrix':       return data.h2h_matrix?.teams.length ? <H2HMatrixWidget h2h={data.h2h_matrix} /> : null
       case 'scoreline_stats':  return data.scoreline_stats ? <ScorelineWidget stats={data.scoreline_stats} /> : null
       case 'title_relegation': return data.title_relegation?.length ? <TitleRelegationWidget data={data.title_relegation} /> : null
