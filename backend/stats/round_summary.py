@@ -1,25 +1,22 @@
 """
-AI-generated round summary using Google Gemini 1.5 Flash (free tier).
+AI-generated round summary using Claude Haiku 3.5 (Anthropic API).
 Generates a Polish sports-journalist summary of the latest round.
 
-Uses the google-genai package (newer SDK, replaces google-generativeai).
-Free tier limits: gemini-1.5-flash has 1500 RPD / 15 RPM — much more
-headroom than gemini-2.5-flash (20 RPD).  Summary is cached per round
-number (in memory + on disk) and only regenerated when new round data arrives.
+Cost: ~$0.004 per summary (well under $5 for an entire season).
+Summary is cached per round number (in memory + on disk) and only
+regenerated when new round data arrives.
 
-Get a free API key at: https://aistudio.google.com/apikey
-Set env var: GOOGLE_API_KEY=<your key>
+Set env var: ANTHROPIC_API_KEY=<your key>
 """
 
 import os
 from typing import Optional
 
 try:
-    from google import genai
-    from google.genai import types as genai_types
-    _GEMINI_AVAILABLE = True
+    import anthropic
+    _ANTHROPIC_AVAILABLE = True
 except ImportError as _import_err:
-    _GEMINI_AVAILABLE = False
+    _ANTHROPIC_AVAILABLE = False
     _IMPORT_ERROR = str(_import_err)
 else:
     _IMPORT_ERROR = None
@@ -29,7 +26,7 @@ else:
 
 def _fmt_standings(standings: list[dict]) -> str:
     lines = []
-    for t in standings[:12]:
+    for t in standings[:15]:
         pos  = t.get("position", "-")
         name = t.get("name", "")
         p    = t.get("played", 0)
@@ -41,7 +38,7 @@ def _fmt_standings(standings: list[dict]) -> str:
         gd   = t.get("goal_difference", 0)
         pts  = t.get("points", 0)
         lines.append(
-            f"  {pos:>2}. {name:<28} {p:>2}m  {w}W/{d}R/{l}P  {gf}:{ga} ({gd:+d})  {pts}pkt"
+            f"  {pos:>2}. {name:<30} {p:>2}m  {w}W/{d}R/{l}P  {gf}:{ga} ({gd:+d})  {pts}pkt"
         )
     return "\n".join(lines)
 
@@ -61,13 +58,13 @@ def _fmt_results(results: list[dict]) -> str:
 
 def _fmt_form(form_table: list[dict]) -> str:
     lines = []
-    for entry in sorted(form_table, key=lambda e: -e.get("points", 0))[:14]:
+    for entry in sorted(form_table, key=lambda e: -e.get("points", 0))[:15]:
         team    = entry.get("team", "")
         results = entry.get("form", [])
         sym_map = {"W": "W", "D": "R", "L": "P"}
         form_str = " ".join(sym_map.get(r.get("result", ""), "?") for r in results[-5:])
         pts5 = entry.get("points", 0)
-        lines.append(f"  {team:<28} {form_str}  ({pts5} pkt)")
+        lines.append(f"  {team:<30} {form_str}  ({pts5} pkt)")
     return "\n".join(lines)
 
 
@@ -134,55 +131,43 @@ def _season_records(results: list[dict]) -> str:
 
 
 def _build_prompt(standings, results, advanced_teams, form_table, latest_round, prev_text) -> str:
-    return f"""Jesteś redaktorem sportowym specjalizującym się w piłce nożnej. Piszesz dla serwisu śledzącego B-klasę Bytom (sezon 2025/2026, Śląski ZPN, Polska).
-
-Masz do dyspozycji dane z kolejki {latest_round} oraz kontekst z poprzednich kolejek. Napisz angażujące podsumowanie po polsku.
-
-══════════════════════════════════════════
-WYNIKI KOLEJKI {latest_round}
-══════════════════════════════════════════
+    data_block = f"""WYNIKI KOLEJKI {latest_round}:
 {_fmt_results([r for r in results if (r.get("round") or 0) == latest_round])}
 
-══════════════════════════════════════════
-POPRZEDNIE KOLEJKI (kontekst)
-══════════════════════════════════════════
-{prev_text}
-
-══════════════════════════════════════════
-TABELA PO KOLEJCE {latest_round}
-══════════════════════════════════════════
+TABELA PO KOLEJCE {latest_round} (kolumny: miejsce, drużyna, mecze, W/R/P, bramki, różnica, punkty):
 {_fmt_standings(standings)}
-(Awans bezpośredni: miejsca 1–2 | Play-offy: miejsca 3–6)
+Awans bezpośredni: miejsca 1–2 | Play-offy: miejsca 3–6
 
-══════════════════════════════════════════
-FORMA DRUŻYN – ostatnie 5 meczów (W=wygrana, R=remis, P=porażka, punkty zdobyte)
-══════════════════════════════════════════
+FORMA DRUŻYN – ostatnie 5 meczów (W=wygrana, R=remis, P=porażka; liczba punktów zdobytych w tych 5 meczach):
 {_fmt_form(form_table)}
 
-══════════════════════════════════════════
-SERIE
-══════════════════════════════════════════
+SERIE:
 {_fmt_streaks(advanced_teams)}
 
-══════════════════════════════════════════
-REKORDY SEZONU
-══════════════════════════════════════════
+REKORDY SEZONU:
 {_season_records(results)}
 
-══════════════════════════════════════════
-ZADANIE
-══════════════════════════════════════════
-Napisz szczegółowe podsumowanie kolejki {latest_round} (ok. 400–500 słów) w stylu dziennikarza sportowego. Wymagania:
+POPRZEDNIE KOLEJKI (kontekst):
+{prev_text}"""
 
-1. Zacznij od uderzającego leadu — najważniejszy lub najbardziej zaskakujący wynik kolejki.
-2. Omów KAŻDY mecz kolejki — nie pomiń żadnego. Dla każdego podaj wynik i krótki komentarz (co decydowało, kto błyszczał, czy był to niespodziewany rezultat).
-3. Omów szczegółowo walkę o czołowe miejsca — lider, różnice punktowe, kto zyskał, kto stracił.
-4. Wyróżnij drużyny w świetnej formie i wspomnij o bieżących seriach (zwycięstw, niepokonania, strzeleckich).
-5. Zwróć uwagę na drużyny w kryzysie (seria porażek, słaba forma, dramatyczna różnica bramek).
-6. Jeśli w tej kolejce padł rekord sezonu (najbardziej bramkostrzelny mecz, najwyższe zwycięstwo), podkreśl go.
-7. Zakończ zapowiedzią kluczowych starć w kolejnych kolejkach i pytaniem o to, kto może zagrozić liderowi.
+    return f"""Wcielasz się w rolę Marka Wiśniewskiego — doświadczonego dziennikarza sportowego z wieloletnim stażem w regionalnej prasie śląskiej, specjalizującego się w amatorskiej piłce nożnej. Twoje teksty ukazują się w wydaniu powiatowym i cieszą się uznaniem czytelników za rzetelność, klasyczny styl i nienaganną polszczyznę. Nigdy nie pozwalasz sobie na żaden błąd językowy, stylistyczny ani interpunkcyjny.
 
-Styl: płynna proza, emocjonalny język sportowy, bez używania markdown (żadnych **, ## ani list punktorowanych). Pisz jak rozbudowany artykuł prasowy — ciągłym tekstem, podzielonym na akapity."""
+ZASADY ŻELAZNE — BEZWZGLĘDNIE OBOWIĄZUJĄCE:
+1. Piszesz WYŁĄCZNIE na podstawie danych przekazanych poniżej w sekcji DANE. Nie wolno Ci niczego dopisywać, zgadywać ani wymyślać — żadnych nazwisk, wyników, wydarzeń ani kontekstów, których nie ma w przekazanych danych.
+2. Jeżeli jakiś mecz nie ma opisu przebiegu gry — ograniczasz się do podania wyniku i ogólnego skomentowania pozycji tabeli. Nie opisujesz bramek, sytuacji ani wydarzeń, o których nie masz informacji.
+3. Dbasz o czystość języka polskiego na najwyższym poziomie: bezbłędna ortografia, interpunkcja, odmiana przez przypadki, właściwy szyk zdania, brak anglicyzmów tam, gdzie istnieje polskie słowo, brak pleonazmów i kalek językowych.
+4. Styl jest prasowy: obiektywny, rzeczowy, a zarazem angażujący czytelnika. Unikasz zarówno suchej statystyki, jak i nadmiernie emocjonalnego języka.
+5. Artykuł liczy od 500 do 700 słów (bez tytułu i lidu).
+6. Struktura tekstu: tytuł → lid (1–2 zdania) → omówienie poszczególnych meczów → akapit o sytuacji w tabeli → zdanie zamykające (zapowiedź kolejnej kolejki lub refleksja o sezonie).
+7. Bez markdown — żadnych **, ## ani list punktorowanych. Ciągły tekst prasowy podzielony na akapity.
+
+---
+DANE (wyniki kolejki {latest_round}, tabela, forma drużyn, serie i kontekst poprzednich kolejek):
+
+{data_block}
+
+---
+Napisz artykuł zgodnie z powyższymi wytycznymi, korzystając wyłącznie z przekazanych danych."""
 
 
 # ── Main generation function ──────────────────────────────────────────────────
@@ -194,16 +179,15 @@ def generate_round_summary(
     form_table: list[dict],
 ) -> Optional[dict]:
     """
-    Use Google Gemini (free tier) to generate a Polish sports summary.
+    Use Claude Haiku 3.5 (Anthropic API) to generate a Polish sports summary.
     Returns dict with keys: round, text, model, error.
-    Returns error dict if API key missing or call fails.
     """
-    if not _GEMINI_AVAILABLE:
-        return {"error": f"google-genai import failed: {_IMPORT_ERROR}", "round": None, "text": None}
+    if not _ANTHROPIC_AVAILABLE:
+        return {"error": f"anthropic import failed: {_IMPORT_ERROR}", "round": None, "text": None}
 
-    api_key = os.environ.get("GOOGLE_API_KEY")
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        return {"error": "GOOGLE_API_KEY not set", "round": None, "text": None}
+        return {"error": "ANTHROPIC_API_KEY not set", "round": None, "text": None}
 
     if not results:
         return {"error": "no results data", "round": None, "text": None}
@@ -225,22 +209,19 @@ def generate_round_summary(
     prompt = _build_prompt(standings, results, advanced_teams, form_table, latest_round, prev_text)
 
     try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                max_output_tokens=4096,
-                temperature=0.8,
-            ),
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
         )
-        text = response.text.strip()
+        text = message.content[0].text.strip()
         return {
             "round": latest_round,
             "text": text,
-            "model": "Gemini 2.5 Flash",
+            "model": "Claude Sonnet 4.5",
             "error": None,
         }
     except Exception as exc:
-        print(f"[round_summary] Gemini API error: {exc}")
+        print(f"[round_summary] Claude API error: {exc}")
         return {"error": str(exc), "round": latest_round, "text": None}

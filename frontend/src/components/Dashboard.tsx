@@ -94,8 +94,8 @@ const SECTION_WIDGETS: Record<string, WidgetId[]> = {
   wszystko:   [], // empty = show all
 }
 
-const STORAGE_KEY = 'bytom-dashboard-layout-v6'
-const HIDDEN_KEY  = 'bytom-dashboard-hidden-v6'
+const STORAGE_KEY = 'bytom-dashboard-layout-v7'
+const HIDDEN_KEY  = 'bytom-dashboard-hidden-v7'
 
 // Mobile widget order (most important first)
 const MOBILE_WIDGET_ORDER: WidgetId[] = [
