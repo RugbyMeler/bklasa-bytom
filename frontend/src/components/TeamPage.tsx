@@ -194,7 +194,7 @@ export function TeamPage({ teamName, data, onBack }: Props) {
             {/* ── Advanced stats ── */}
             <SectionHeader>Zaawansowane metryki</SectionHeader>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-              <StatBox label="Exp. wygrane (pitagoras)" value={team.pythagorean_expectation.toFixed(2)} color="#a78bfa" />
+              <StatBox label="Exp. wygrane (pitagoras)" value={`${Math.round(team.pythagorean_expectation * 100)}%`} color="#a78bfa" />
               <StatBox label="Pitagoras pkt" value={team.pythagorean_points.toFixed(1)} color="#a78bfa" />
               <StatBox label="Pkt ponad oczekiwania" value={`${team.points_above_expectation > 0 ? '+' : ''}${team.points_above_expectation.toFixed(1)}`}
                 color={team.points_above_expectation > 0 ? '#22c55e' : team.points_above_expectation < 0 ? '#ef4444' : '#94a3b8'} />
