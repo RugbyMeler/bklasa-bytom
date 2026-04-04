@@ -9,11 +9,11 @@ export function PointsPaceWidget({ data }: Props) {
   const sorted = [...data].sort((a, b) => b.projected - a.projected)
   const totalRounds = data[0]?.total_rounds ?? 30
 
-  // B-klasa: top 2 promoted (green), 3–6 playoffs (blue), rest mid-table (slate)
+  // B-klasa: top 2 promoted (green), 3rd playoff (blue), rest mid-table (slate)
   const color = (pos: number) => {
     if (pos === 1) return '#4ade80'
     if (pos <= 2) return '#86efac'
-    if (pos <= 6) return '#60a5fa'
+    if (pos === 3) return '#60a5fa'
     return '#475569'
   }
 
@@ -55,7 +55,7 @@ export function PointsPaceWidget({ data }: Props) {
 
         <div className="flex gap-4 justify-center mt-2 text-xs text-slate-500">
           <span><span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: '#4ade80' }} />Awans (1–2)</span>
-          <span><span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: '#60a5fa' }} />Baraże (3–6)</span>
+          <span><span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: '#60a5fa' }} />Baraże (3)</span>
           <span><span className="inline-block w-2 h-2 rounded-sm mr-1" style={{ background: '#475569' }} />Środek tabeli</span>
         </div>
       </div>

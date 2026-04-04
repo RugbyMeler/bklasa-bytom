@@ -57,7 +57,7 @@ export function StandingsWidget({ teams, onTeamClick }: Props) {
             <tbody>
               {teams.map((team, idx) => {
                 const isPromotion = idx < 2
-                const isPlayoff = idx >= 2 && idx < 6
+                const isPlayoff = idx === 2
                 return (
                   <tr
                     key={team.name}
@@ -125,7 +125,7 @@ export function StandingsWidget({ teams, onTeamClick }: Props) {
           </span>
           <span className="flex items-center gap-1">
             <span style={{ width: 8, height: 12, background: '#38bdf8', borderRadius: 2, display: 'inline-block' }} />
-            Baraże (3–6)
+            Baraże (3)
           </span>
         </div>
       </div>

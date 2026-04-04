@@ -7,11 +7,11 @@ export function TitleRelegationWidget({ data }: Props) {
 
   const sorted = [...data].sort((a, b) => a.position - b.position)
 
-  // B-klasa: top 2 promoted, 3–6 qualify for playoffs, no relegation
+  // B-klasa: top 2 promoted, 3rd qualifies for playoff, no relegation
   const zone = (pos: number) => {
     if (pos === 1) return { bg: 'rgba(74,222,128,0.15)', border: 'rgba(74,222,128,0.4)', label: '⬆️' }
     if (pos === 2) return { bg: 'rgba(74,222,128,0.08)', border: 'rgba(74,222,128,0.25)', label: '⬆️' }
-    if (pos <= 6)  return { bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)', label: '🔵' }
+    if (pos === 3) return { bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)', label: '🔵' }
     return { bg: 'transparent', border: 'rgba(45,74,99,0.4)', label: '' }
   }
 
@@ -81,7 +81,7 @@ export function TitleRelegationWidget({ data }: Props) {
         </table>
         <div className="flex gap-4 px-3 py-2 text-xs text-slate-500">
           <span><span className="text-green-400 mr-1">⬆️</span>awans (1–2)</span>
-          <span><span className="text-blue-400 mr-1">🔵</span>baraże (3–6)</span>
+          <span><span className="text-blue-400 mr-1">🔵</span>baraże (3)</span>
           <span className="ml-auto">Proj. = PPG × liczba kolejek</span>
         </div>
       </div>

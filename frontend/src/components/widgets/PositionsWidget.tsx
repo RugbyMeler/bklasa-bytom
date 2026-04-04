@@ -75,7 +75,7 @@ export function PositionsWidget({ data }: Props) {
   }
 
   const promoLine = nTeams - 2 + 0.5
-  const playoffLine = nTeams - 6 + 0.5
+  const playoffLine = nTeams - 3 + 0.5
 
   return (
     <div className="widget-card">
