@@ -15,8 +15,9 @@ from typing import Any
 from dotenv import load_dotenv
 load_dotenv()  # loads .env from project root if present
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from scrapers.scraper_90minut import (
     fetch_results as fetch_results_90,
@@ -56,6 +57,82 @@ app.add_middleware(
 # Simple in-memory cache with TTL
 _cache: dict[str, tuple[Any, float]] = {}
 CACHE_TTL = 900  # 15 minutes
+
+# Manual results: scores entered by the user before they appear on 90minut.pl.
+# Stored as a JSON list; merged into results in _get_clean_data().
+# Scraped data always wins — if the same fixture exists in 90minut data the
+# manual entry is silently ignored.
+_MANUAL_RESULTS_FILE = Path(__file__).parent / "manual_results.json"
+
+def _load_manual_results() -> list[dict]:
+    try:
+        if _MANUAL_RESULTS_FILE.exists():
+            return json.loads(_MANUAL_RESULTS_FILE.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"[manual_results] Failed to load: {exc}")
+    return []
+
+def _save_manual_results(results: list[dict]) -> None:
+    try:
+        _MANUAL_RESULTS_FILE.write_text(
+            json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception as exc:
+        print(f"[manual_results] Failed to save: {exc}")
+
+
+_MANUAL_PASSPHRASE = os.environ.get("MANUAL_PASSPHRASE", "")
+
+
+def _check_passphrase(x_passphrase: str | None) -> None:
+    if not _MANUAL_PASSPHRASE:
+        raise HTTPException(503, "MANUAL_PASSPHRASE not configured on server")
+    if x_passphrase != _MANUAL_PASSPHRASE:
+        raise HTTPException(403, "Invalid passphrase")
+
+
+class ManualResultIn(BaseModel):
+    round: int
+    home_team: str
+    home_goals: int
+    away_goals: int
+    away_team: str
+    date: str = ""
+
+
+@app.get("/api/manual-results")
+def list_manual_results():
+    return {"manual_results": _load_manual_results()}
+
+
+@app.post("/api/manual-results", status_code=201)
+def add_manual_result(body: ManualResultIn, x_passphrase: str | None = Header(default=None)):
+    _check_passphrase(x_passphrase)
+    results = _load_manual_results()
+    entry = {
+        "round": body.round,
+        "home_team": body.home_team,
+        "home_goals": body.home_goals,
+        "away_goals": body.away_goals,
+        "away_team": body.away_team,
+        "date": body.date,
+        "source": "manual",
+    }
+    results.append(entry)
+    _save_manual_results(results)
+    return {"added": entry, "total": len(results)}
+
+
+@app.delete("/api/manual-results/{idx}")
+def delete_manual_result(idx: int, x_passphrase: str | None = Header(default=None)):
+    _check_passphrase(x_passphrase)
+    results = _load_manual_results()
+    if idx < 0 or idx >= len(results):
+        raise HTTPException(404, "Manual result not found")
+    removed = results.pop(idx)
+    _save_manual_results(results)
+    return {"removed": removed, "total": len(results)}
+
 
 # Round-summary cache: keyed by round number so it never expires
 # unless new round data arrives (different round key = new generation).
@@ -347,14 +424,26 @@ def get_round_summary():
 
 
 def _get_clean_data() -> tuple[list[dict], list[dict]]:
-    """Return standings and results computed purely from 90minut.pl results.
+    """Return standings and results computed purely from 90minut.pl results,
+    supplemented by any manually entered results that haven't yet been scraped.
 
-    Withdrawn teams are excluded from the return half of the season.
-    Standings are derived entirely from the filtered results — no external
-    standings source is used.
+    Scraped data always wins: a manual entry is dropped if a result with the
+    same (round, home_team, away_team) already exists in the scraped data.
     """
     raw_results = _cached("results_90", fetch_results_90)
     results = _filter_results(raw_results)
+
+    # Build a lookup key set for deduplication
+    scraped_keys = {
+        (r.get("round"), r.get("home_team"), r.get("away_team"))
+        for r in results
+    }
+
+    for m in _load_manual_results():
+        key = (m.get("round"), m.get("home_team"), m.get("away_team"))
+        if key not in scraped_keys:
+            results = results + [m]
+
     standings = compute_standings_from_results(results)
     return standings, results
 
