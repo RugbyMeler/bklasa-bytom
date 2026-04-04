@@ -23,7 +23,8 @@ import { RoundSummaryWidget }    from './widgets/RoundSummaryWidget'
 import { UpcomingMatchesWidget } from './widgets/UpcomingMatchesWidget'
 
 import type { DashboardData, WidgetId } from '../types'
-import { ArrowLeft, Eye, EyeOff, RotateCcw, RefreshCw, Settings } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, RotateCcw, RefreshCw, Settings, PlusCircle } from 'lucide-react'
+import { ManualResultModal } from './ManualResultModal'
 
 interface Props {
   data: DashboardData
@@ -122,6 +123,7 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection, onTeam
   const [layout, setLayout]         = useState<Layout[]>(loadLayout)
   const [hidden, setHidden]         = useState<Set<WidgetId>>(loadHidden)
   const [showPanel, setPanel]       = useState(false)
+  const [showManual, setShowManual] = useState(false)
   const [containerWidth, setW]      = useState(1280)
   const [isMobile, setIsMobile]     = useState(() => window.innerWidth < 768)
   const [mobileWidget, setMobileWidget] = useState<WidgetId | null>(null)
@@ -455,6 +457,25 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection, onTeam
           {/* Right side controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
+              onClick={() => setShowManual(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px',
+                background: 'rgba(251,191,36,0.1)',
+                border: '1px solid rgba(251,191,36,0.3)',
+                borderRadius: 8,
+                color: '#fbbf24',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+                transition: 'all 0.15s',
+              }}
+            >
+              <PlusCircle size={13} />
+              DODAJ WYNIK
+            </button>
+            <button
               onClick={onRefresh}
               disabled={isRefreshing}
               style={{
@@ -611,6 +632,14 @@ export function Dashboard({ data, onRefresh, isRefreshing, activeSection, onTeam
       <footer className="text-center py-6 text-xs" style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--card-bd)', marginTop: 8 }}>
         Dane: regionalnyfutbol.pl · 90minut.pl · laczynaspilka.pl &nbsp;|&nbsp; Odśwież co 15 min
       </footer>
+
+      {showManual && (
+        <ManualResultModal
+          teams={teams.map(t => t.name)}
+          onClose={() => setShowManual(false)}
+          onSaved={onRefresh}
+        />
+      )}
     </div>
   )
 }
