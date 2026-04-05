@@ -411,6 +411,25 @@ def _get_round_summary(standings, results, schedule, advanced, form_table) -> di
     return summary or {"round": target_round, "text": None, "error": "generation failed"}
 
 
+@app.post("/api/force-summary")
+def force_round_summary(x_passphrase: str | None = Header(default=None)):
+    """Force-regenerate the round summary for the highest round in results,
+    bypassing the 'all fixtures played' check. Useful when a game is postponed.
+    Passphrase-protected to prevent abuse.
+    """
+    _check_passphrase(x_passphrase)
+    standings, results = _get_clean_data()
+    schedule = _cached("schedule_rf", fetch_schedule_rf)
+    advanced = compute_all_advanced_stats(standings, results) if standings else []
+    form_table = compute_form_table(results, last_n=5)
+
+    summary = generate_round_summary(standings, results, advanced, form_table)
+    if summary and summary.get("round") and not summary.get("error"):
+        _summary_by_round[summary["round"]] = summary
+        _save_summary_cache(_summary_by_round)
+    return summary
+
+
 @app.get("/api/round-summary")
 def get_round_summary():
     """Return AI-generated summary for the latest fully-completed round.
