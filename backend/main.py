@@ -523,9 +523,14 @@ def get_all(background_tasks: BackgroundTasks):
 
     positions_over_time = compute_positions_over_time(results)
 
-    # Include summary if already cached; otherwise kick off generation in background
+    # Include summary if already cached; otherwise kick off generation in background.
+    # Prefer the highest cached round (covers the case where a postponed fixture
+    # prevents _latest_completed_round from advancing, but we've force-generated
+    # the summary anyway).
     completed_round = _latest_completed_round(results, schedule)
-    round_summary = _summary_by_round.get(completed_round)
+    latest_cached_round = max(_summary_by_round.keys(), default=0)
+    best_round = max(completed_round, latest_cached_round)
+    round_summary = _summary_by_round.get(best_round)
     if not round_summary:
         background_tasks.add_task(
             _warm_summary_cache, standings, results, schedule, advanced, form_table
