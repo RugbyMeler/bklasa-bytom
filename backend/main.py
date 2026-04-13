@@ -411,9 +411,13 @@ def _get_round_summary(standings, results, schedule, advanced, form_table) -> di
     return summary or {"round": target_round, "text": None, "error": "generation failed"}
 
 
+class ForceSummaryIn(BaseModel):
+    round: int | None = None
+
+
 @app.post("/api/force-summary")
-def force_round_summary(x_passphrase: str | None = Header(default=None)):
-    """Force-regenerate the round summary for the highest round in results,
+def force_round_summary(body: ForceSummaryIn = ForceSummaryIn(), x_passphrase: str | None = Header(default=None)):
+    """Force-regenerate the round summary for a specific round (or the latest),
     bypassing the 'all fixtures played' check. Useful when a game is postponed.
     Passphrase-protected to prevent abuse.
     """
@@ -423,7 +427,14 @@ def force_round_summary(x_passphrase: str | None = Header(default=None)):
     advanced = compute_all_advanced_stats(standings, results) if standings else []
     form_table = compute_form_table(results, last_n=5)
 
-    summary = generate_round_summary(standings, results, advanced, form_table)
+    # Filter results to the target round if specified
+    target_round = body.round
+    if target_round:
+        results_for_summary = [r for r in results if (r.get("round") or 0) <= target_round]
+    else:
+        results_for_summary = results
+
+    summary = generate_round_summary(standings, results_for_summary, advanced, form_table)
     if summary and summary.get("round") and not summary.get("error"):
         _summary_by_round[summary["round"]] = summary
         _save_summary_cache(_summary_by_round)
